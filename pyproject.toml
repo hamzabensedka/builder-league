@@ -39,6 +39,7 @@ ignore = [
 
 [tool.importlinter]
 root_package = "core"
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
 name = "Domain is pure: no frameworks, no I/O libraries"
