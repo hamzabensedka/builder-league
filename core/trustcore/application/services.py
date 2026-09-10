@@ -73,8 +73,22 @@ class TrustService:
         self._credentials.save(cred)
         return cred
 
+    def register_signed_credential(self, credential: Credential) -> Credential:
+        """Store a credential signed client-side. Signature is verified at the
+        boundary — the service never trusts an unverifiable claim."""
+        from core.trustcore.domain.credentials import VerificationFailure
+
+        failures = verify_credential(credential, now=self._clock.now())
+        if VerificationFailure.INVALID_SIGNATURE in failures:
+            raise ValueError("credential signature does not verify")
+        self._credentials.save(credential)
+        return credential
+
     def revoke_credential(self, *, credential_id: str, reason: str) -> None:
         self._credentials.mark_revoked(credential_id, at=self._clock.now(), reason=reason)
+
+    def list_agents(self) -> list[dict[str, Any]]:
+        return self._registry.list_agents()
 
     # --- the trust-gated decision -------------------------------------------
 
