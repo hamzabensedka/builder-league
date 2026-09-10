@@ -50,7 +50,11 @@ class RevokeIn(BaseModel):
     credential_id: str
     reason: str = Field(min_length=1, max_length=500)
     issuer_key: str
+    revoked_at: str  # ISO timestamp the issuer commits to (part of re-signed payload)
     request_signature: str
+    # Issuer's signature over the revoked credential payload (optional but
+    # keeps the revoked credential independently verifiable — clean receipts).
+    resigned_credential_signature: str | None = None
 
 
 class DecideIn(BaseModel):
@@ -65,10 +69,15 @@ class DecideIn(BaseModel):
 
 def _require_request_signature(issuer_key: str, body: dict[str, Any], signature: str) -> None:
     """Mutating endpoints are credential-gated: the caller must sign the
-    request body (canonical JSON of all fields except request_signature)."""
-    payload = {k: v for k, v in body.items() if k != "request_signature"}
+    request body (canonical JSON of all fields except request_signature).
+    None-valued optionals are dropped so clients signing without them verify."""
+    payload = {
+        k: v for k, v in body.items() if k != "request_signature" and v is not None
+    }
     if not verify_payload(issuer_key, payload, signature):
         raise HTTPException(status_code=403, detail="invalid request signature")
+
+
 
 
 # ---------------------------------------------------------------- app
@@ -126,7 +135,30 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     @app.post("/api/trust/revoke")
     def revoke_credential(body: RevokeIn) -> dict[str, str]:
         _require_request_signature(body.issuer_key, body.model_dump(), body.request_signature)
-        svc.revoke_credential(credential_id=body.credential_id, reason=body.reason)
+        cred = svc.get_credential(body.credential_id)
+        if cred is None:
+            raise HTTPException(status_code=404, detail="unknown credential")
+        if cred.issuer_key != body.issuer_key:
+            raise HTTPException(status_code=403, detail="only the issuer may revoke")
+        if body.resigned_credential_signature:
+            from dataclasses import replace
+            from datetime import datetime
+
+            revoked = replace(
+                cred,
+                revoked_at=datetime.fromisoformat(body.revoked_at),
+                revocation_reason=body.reason,
+                signature=body.resigned_credential_signature,
+            )
+            if not verify_payload(
+                body.issuer_key, revoked.signed_payload(), body.resigned_credential_signature
+            ):
+                raise HTTPException(status_code=400, detail="resigned credential signature invalid")
+            svc.revoke_credential(
+                credential_id=body.credential_id, reason=body.reason, resigned=revoked
+            )
+        else:
+            svc.revoke_credential(credential_id=body.credential_id, reason=body.reason)
         return {"status": "revoked", "credential_id": body.credential_id}
 
     @app.post("/api/trust/decide")
@@ -145,8 +177,9 @@ def create_app(service: TrustService | None = None) -> FastAPI:
             "llm_called": receipt.llm_called,
         }
 
-    @app.get("/api/trust/profile/{subject_key}")
+    @app.get("/api/trust/profile")
     def profile(subject_key: str) -> dict[str, Any]:
+        # query param: base64 keys contain '/' and '+', unsafe in path segments
         return svc.trust_profile(subject_key=subject_key)
 
     @app.get("/api/trust/receipts")

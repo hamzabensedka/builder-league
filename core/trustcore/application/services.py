@@ -84,8 +84,26 @@ class TrustService:
         self._credentials.save(credential)
         return credential
 
-    def revoke_credential(self, *, credential_id: str, reason: str) -> None:
-        self._credentials.mark_revoked(credential_id, at=self._clock.now(), reason=reason)
+    def get_credential(self, credential_id: str) -> Credential | None:
+        return self._credentials.get(credential_id)
+
+    def revoke_credential(
+        self, *, credential_id: str, reason: str, resigned: "Credential | None" = None
+    ) -> None:
+        """Revoke. If `resigned` (issuer re-signed revoked credential) is given,
+        store it so the revoked credential stays verifiable; otherwise mark
+        revoked directly (verification will then report invalid+revoked —
+        still refuses, fail-closed, just a less clean signal)."""
+        from dataclasses import replace
+
+        cred = self._credentials.get(credential_id)
+        if cred is None:
+            raise ValueError(f"unknown credential {credential_id}")
+        if resigned is not None:
+            self._credentials.save(resigned)
+        else:
+            revoked = replace(cred, revoked_at=self._clock.now(), revocation_reason=reason)
+            self._credentials.save(revoked)
 
     def list_agents(self) -> list[dict[str, Any]]:
         return self._registry.list_agents()

@@ -90,9 +90,9 @@ def test_full_accept_and_refuse_flow_over_http():
     refused = decide(client, spoofer.public_key_b64)
     assert refused["decision"] == "refuse"
 
-    from urllib.parse import quote
-
-    profile_resp = client.get(f"/api/trust/profile/{quote(buyer.public_key_b64, safe='')}")
+    profile_resp = client.get(
+        "/api/trust/profile", params={"subject_key": buyer.public_key_b64}
+    )
     assert profile_resp.status_code == 200, profile_resp.text
     profile = profile_resp.json()
     assert profile["counts"]["valid_completions"] == 2
@@ -143,6 +143,7 @@ def test_revoke_endpoint_flips_decision():
         "credential_id": cred["id"],
         "reason": "owner revoked",
         "issuer_key": acme.public_key_b64,
+        "revoked_at": datetime.now(UTC).isoformat(),
     }
     revoke_body["request_signature"] = sign_payload(acme, revoke_body)
     r = client.post("/api/trust/revoke", json=revoke_body)
@@ -166,6 +167,7 @@ def test_revoke_requires_issuer_signature():
         "credential_id": cred["id"],
         "reason": "malicious revocation attempt",
         "issuer_key": acme.public_key_b64,
+        "revoked_at": datetime.now(UTC).isoformat(),
     }
     # attacker tries to revoke Acme's grant, signing with their own key
     revoke_body["request_signature"] = sign_payload(attacker, revoke_body)
