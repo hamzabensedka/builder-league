@@ -1,0 +1,73 @@
+[project]
+name = "builder-league"
+version = "0.1.0"
+description = "DOO Builders League — shared core: trust, decisions, memory, simulation"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pynacl>=1.5",
+    "sqlalchemy>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "import-linter>=2.0",
+    "cedarpy>=0.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --no-header"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "S", "B", "SIM"]
+ignore = [
+    "S101",    # assert is fine in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+
+[tool.importlinter]
+root_package = "core"
+
+[[tool.importlinter.contracts]]
+name = "Domain is pure: no frameworks, no I/O libraries"
+type = "forbidden"
+source_modules = ["core.trustcore.domain"]
+forbidden_modules = [
+    "fastapi",
+    "sqlalchemy",
+    "redis",
+    "requests",
+    "httpx",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application layer does not depend on adapters"
+type = "forbidden"
+source_modules = ["core.trustcore.application"]
+forbidden_modules = [
+    "core.trustcore.adapters",
+    "fastapi",
+    "sqlalchemy",
+]
+
+[[tool.importlinter.contracts]]
+name = "Layers: adapters may use application+domain, application may use domain"
+type = "layers"
+layers = [
+    "core.trustcore.adapters",
+    "core.trustcore.application",
+    "core.trustcore.domain",
+]

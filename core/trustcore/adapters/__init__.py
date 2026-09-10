@@ -1,0 +1,1 @@
+"""Adapter layer: FastAPI, SQLAlchemy, Langfuse. May depend on application and domain."""

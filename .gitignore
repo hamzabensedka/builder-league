@@ -1,0 +1,27 @@
+# Secrets & keys — never committed
+.env
+.env.*
+*.pem
+*.key
+keys/
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Node / UI
+node_modules/
+ui/dist/
+ui/node_modules/
+
+# Misc
+.DS_Store
+Thumbs.db

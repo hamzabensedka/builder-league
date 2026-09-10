@@ -1,0 +1,1 @@
+"""Application layer: use-case services. Depends on domain only; adapters via Protocol injection."""

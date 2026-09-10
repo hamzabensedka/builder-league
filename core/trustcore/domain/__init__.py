@@ -1,0 +1,1 @@
+"""Domain layer: pure logic, zero I/O, zero framework imports (enforced by import-linter)."""

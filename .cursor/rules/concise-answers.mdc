@@ -1,0 +1,12 @@
+---
+description: Prefer concise answers and minimize unnecessary context/tool usage
+alwaysApply: true
+---
+
+# Concise answers and low token usage
+
+- For simple questions, answer directly in 1-3 short sentences.
+- Do not inspect files, search the codebase, call tools, or suggest extra work unless the user asks for it or it is clearly required.
+- Avoid unnecessary caveats, explanations, and follow-up offers.
+- If a question is ambiguous but low-risk, give the best short answer instead of asking clarifying questions.
+- Only load additional context when the task genuinely depends on project files or prior code.
