@@ -74,7 +74,10 @@ async def main(base: str) -> None:
             "requester_key": buyer.public_key_b64, "action": "purchase", "amount": 800,
             "description": "100 units @ $8",
         })).json()
-        print(f"       DECISION: {r['decision'].upper()} — {r['reasoning']}  [llm_called={r['llm_called']}]")
+        print(
+            f"       DECISION: {r['decision'].upper()} — {r['reasoning']}"
+            f"  [llm_called={r['llm_called']}]"
+        )
 
         print("\n[0:40] BEAT 2 — Task completes; VendorBot issues TaskCompletion credential")
         await client.post("/api/trust/credentials", json=signed_credential_body(
@@ -95,7 +98,10 @@ async def main(base: str) -> None:
         )
         forged["issuer_key"] = acme.public_key_b64  # claims Acme issued it
         resp = await client.post("/api/trust/credentials", json=forged)
-        print(f"       Forge submission -> HTTP {resp.status_code} ({resp.json().get('detail', '')})")
+        print(
+            f"       Forge submission -> HTTP {resp.status_code}"
+            f" ({resp.json().get('detail', '')})"
+        )
 
         print("\n[0:55] BEAT 4 — SpooferBot tries the purchase anyway...")
         r = (await client.post("/api/trust/decide", json={
