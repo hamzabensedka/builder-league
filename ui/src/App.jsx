@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import SimGate from './sim/SimGate'
 
 const api = {
   agents: () => fetch('/api/trust/agents').then((r) => r.json()),
@@ -198,6 +199,7 @@ function ReceiptFeed({ receipts }) {
 /* ------------------------------------------------------------------ */
 
 export default function App() {
+  const [tab, setTab] = useState('trust')
   const [agents, setAgents] = useState([])
   const [selected, setSelected] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -283,7 +285,7 @@ export default function App() {
               90 seconds, server-side. Watch the receipts appear on the right.
             </span>
           </div>
-          {lastRun && (
+          {lastRun && tab === 'trust' && (
             <ol className="mt-6 space-y-1.5 fade-up">
               {lastRun.beats.map((b, i) => (
                 <li key={i} className="text-[13px] flex items-baseline gap-2.5">
@@ -296,17 +298,40 @@ export default function App() {
               ))}
             </ol>
           )}
+
+          {/* challenge tabs */}
+          <div className="mt-8 flex gap-2">
+            {[
+              ['trust', 'C1 · Trust'],
+              ['sim', 'C8 · Simulate first'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`pressable text-sm font-medium px-4 py-2 rounded-md border ${
+                  tab === id ? 'bg-[#1a1a18] text-white border-transparent' : 'hover:bg-[var(--canvas)]'
+                }`}
+                style={{ borderColor: tab === id ? 'transparent' : 'var(--line)' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
-          <AgentList agents={agents} selected={selected} onPick={setSelected} />
-          <Profile agent={selected} profile={profile} />
-          <ReceiptFeed receipts={receipts} />
-        </div>
+        {tab === 'trust' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
+            <AgentList agents={agents} selected={selected} onPick={setSelected} />
+            <Profile agent={selected} profile={profile} />
+            <ReceiptFeed receipts={receipts} />
+          </div>
+        ) : (
+          <SimGate />
+        )}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
-          <span className="mono">TrustCore · Builders League, Challenge 1</span>
-          <span>Ed25519 · VC-shaped claims · append-only receipts</span>
+          <span className="mono">TrustCore + SimCore · Builders League, C1 &amp; C8</span>
+          <span>Ed25519 · VC-shaped claims · append-only receipts · simulate-first</span>
         </footer>
       </div>
     </div>
