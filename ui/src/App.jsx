@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import DecisionConsole from './decision/DecisionConsole'
 import SimGate from './sim/SimGate'
 
 const api = {
@@ -303,6 +304,7 @@ export default function App() {
           <div className="mt-8 flex gap-2">
             {[
               ['trust', 'C1 · Trust'],
+              ['decision', 'C2 · Decision Engine'],
               ['sim', 'C8 · Simulate first'],
             ].map(([id, label]) => (
               <button
@@ -319,19 +321,19 @@ export default function App() {
           </div>
         </header>
 
-        {tab === 'trust' ? (
+        {tab === 'trust' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
             <AgentList agents={agents} selected={selected} onPick={setSelected} />
             <Profile agent={selected} profile={profile} />
             <ReceiptFeed receipts={receipts} />
           </div>
-        ) : (
-          <SimGate />
         )}
+        {tab === 'decision' && <DecisionConsole />}
+        {tab === 'sim' && <SimGate />}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
-          <span className="mono">TrustCore + SimCore · Builders League, C1 &amp; C8</span>
-          <span>Ed25519 · VC-shaped claims · append-only receipts · simulate-first</span>
+          <span className="mono">TrustCore + DecisionCore + SimCore · Builders League, C1, C2 &amp; C8</span>
+          <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first</span>
         </footer>
       </div>
     </div>
