@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import AdaptiveRun from './adaptive/AdaptiveRun'
 import DecisionConsole from './decision/DecisionConsole'
 import SimGate from './sim/SimGate'
 
@@ -306,6 +307,7 @@ export default function App() {
               ['trust', 'C1 · Trust'],
               ['decision', 'C2 · Decision Engine'],
               ['sim', 'C8 · Simulate first'],
+              ['adaptive', 'C3 · Adaptive Agent'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -330,10 +332,11 @@ export default function App() {
         )}
         {tab === 'decision' && <DecisionConsole />}
         {tab === 'sim' && <SimGate />}
+        {tab === 'adaptive' && <AdaptiveRun />}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
-          <span className="mono">TrustCore + DecisionCore + SimCore · Builders League, C1, C2 &amp; C8</span>
-          <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first</span>
+          <span className="mono">TrustCore + DecisionCore + SimCore + AdaptiveCore · Builders League, C1, C2, C3 &amp; C8</span>
+          <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first · plan/observe/revise</span>
         </footer>
       </div>
     </div>
