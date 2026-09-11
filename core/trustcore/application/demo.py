@@ -10,7 +10,7 @@ from typing import Any
 
 from core.trustcore.application.services import TrustService
 from core.trustcore.domain.credentials import CredentialType
-from core.trustcore.domain.crypto import KeyPair, sign_payload
+from core.trustcore.domain.crypto import KeyPair
 
 
 def run_demo_scenario(svc: TrustService) -> dict[str, Any]:
@@ -46,7 +46,9 @@ def run_demo_scenario(svc: TrustService) -> dict[str, Any]:
             claim={"task": "prior purchase", "outcome": "completed"},
             scope={"actions": ["purchase"]},
         )
-    beats.append({"label": "Acme granted BuyerBot purchase authority (≤ $1000); two vendors vouched"})
+    beats.append(
+        {"label": "Acme granted BuyerBot purchase authority (≤ $1000); two vendors vouched"}
+    )
 
     r1 = svc.decide(
         requester_key=buyer.public_key_b64,
@@ -77,7 +79,9 @@ def run_demo_scenario(svc: TrustService) -> dict[str, Any]:
     # plant at store level, as an attacker with network access would
     svc._credentials.save(forged_as_acme)
     r2 = svc.decide(requester_key=spoofer.public_key_b64, action="purchase", amount=800)
-    beats.append({"label": "SpooferBot forged an Acme grant, tried to buy", "decision": str(r2.decision)})
+    beats.append(
+        {"label": "SpooferBot forged an Acme grant, tried to buy", "decision": str(r2.decision)}
+    )
 
     # scope escape with a real $50 grant
     svc.issue_credential(
@@ -88,7 +92,12 @@ def run_demo_scenario(svc: TrustService) -> dict[str, Any]:
         scope={"actions": ["purchase"], "max_amount": 50},
     )
     r3 = svc.decide(requester_key=spoofer.public_key_b64, action="purchase", amount=800)
-    beats.append({"label": "SpooferBot used a real $50 grant for an $800 purchase", "decision": str(r3.decision)})
+    beats.append(
+        {
+            "label": "SpooferBot used a real $50 grant for an $800 purchase",
+            "decision": str(r3.decision),
+        }
+    )
 
     # revocation: issuer re-signs so the revoked credential stays verifiable
     authority = [
@@ -105,7 +114,12 @@ def run_demo_scenario(svc: TrustService) -> dict[str, Any]:
         credential_id=cred.id, reason="Acme revoked — demo", resigned=sign_credential(acme, revoked)
     )
     r4 = svc.decide(requester_key=buyer.public_key_b64, action="purchase", amount=800)
-    beats.append({"label": "Acme revoked BuyerBot's authority; BuyerBot retried", "decision": str(r4.decision)})
+    beats.append(
+        {
+            "label": "Acme revoked BuyerBot's authority; BuyerBot retried",
+            "decision": str(r4.decision),
+        }
+    )
 
     return {
         "beats": beats,

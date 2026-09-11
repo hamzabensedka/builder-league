@@ -87,6 +87,16 @@ class TrustService:
     def get_credential(self, credential_id: str) -> Credential | None:
         return self._credentials.get(credential_id)
 
+    def list_credentials(self) -> list[Credential]:
+        """All stored credentials (read-only). Added for SimCore's fork: a
+        simulation must deep-copy the REAL signed credentials, not lossy
+        reconstructions — verification is fail-closed on bad signatures."""
+        seen: dict[str, Credential] = {}
+        for agent in self.list_agents():
+            for c in self._credentials.for_subject(agent["public_key"]):
+                seen[c.id] = c
+        return list(seen.values())
+
     def revoke_credential(
         self, *, credential_id: str, reason: str, resigned: "Credential | None" = None
     ) -> None:
@@ -210,6 +220,32 @@ class TrustService:
 
     def list_receipts(self, *, limit: int = 50) -> list[Receipt]:
         return self._receipts.list(limit=limit)
+
+    def record_event(
+        self,
+        *,
+        actor: str,
+        action: str,
+        note: str,
+        inputs: dict[str, Any] | None = None,
+        decision: PolicyDecision = PolicyDecision.ALLOW,
+    ) -> Receipt:
+        """Append an audit receipt for a NON-decision event (e.g. SimCore's
+        escalate/rollback steps). Keeps one append-only forensic trail across
+        modules without exposing the receipt store itself."""
+        receipt = Receipt(
+            id=str(uuid.uuid4()),
+            ts=self._clock.now(),
+            agent_id=actor,
+            action=action,
+            inputs=inputs or {},
+            signals={},
+            decision=decision,
+            reasoning=note,
+            llm_called=False,
+        )
+        self._receipts.append(receipt)
+        return receipt
 
     def scope_check(self, credential: Credential, *, action: str, amount: float | None) -> bool:
         return matches_scope(credential.scope, action=action, amount=amount)
