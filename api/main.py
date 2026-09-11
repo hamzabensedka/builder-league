@@ -13,8 +13,21 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from core.adaptivecore.adapters.memory import (
+    DecisionStepGate,
+    InMemoryEventStream,
+    InMemoryPlanStore,
+    InMemoryRevisionStore,
+    InMemoryRunStore,
+    InMemoryWorldStore,
+    SimBudgetPort,
+    SimStepPreview,
+    TrustAuthorityPort,
+)
+from core.adaptivecore.application.services import AdaptiveService
 from core.decisioncore.adapters.memory import InMemoryDecisionStore
 from core.decisioncore.application.services import DecisionService, make_authority_probe
+from core.decisioncore.domain.policies import register_domain
 from core.simcore.adapters.memory import InMemoryLedgerStore, InMemorySimulationStore
 from core.simcore.application.services import SimService
 from core.trustcore.adapters.memory import (
@@ -129,6 +142,28 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         authority_probe=make_authority_probe(svc, _trust_factory),
     )
     app.state.decision_service = decision_svc
+
+    # C3 AdaptiveCore composes the three modules through their public
+    # application surfaces: TrustCore for authority + receipts, DecisionCore
+    # for per-step gating, SimCore for budget effects + pre-commit previews.
+    # The purchase gate policy lives in DecisionCore; AdaptiveCore calls it
+    # by domain name like any other consumer.
+    from core.decisioncore.application.purchase_policy import PURCHASE
+
+    register_domain(PURCHASE)
+    adaptive_svc = AdaptiveService(
+        runs=InMemoryRunStore(),
+        plans=InMemoryPlanStore(),
+        events=InMemoryEventStream(),
+        world=InMemoryWorldStore(),
+        revisions=InMemoryRevisionStore(),
+        budget=SimBudgetPort(sim_svc),
+        authority=TrustAuthorityPort(svc),
+        gate=DecisionStepGate(decision_svc),
+        preview=SimStepPreview(sim_svc),
+        audit=svc,
+    )
+    app.state.adaptive_service = adaptive_svc
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -390,5 +425,70 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         if record is None:
             raise HTTPException(status_code=404, detail="unknown decision")
         return record
+
+    # ------------------------------------------------------------ C3 AdaptiveCore
+    # Runs execute one step per advance; world changes arrive as events with
+    # real side effects. No prompt box — the loop is deterministic.
+
+    class StartRunIn(BaseModel):
+        scenario: str = Field(min_length=1, max_length=50)
+        mode: Literal["adaptive", "baseline"]
+
+    class InjectEventIn(BaseModel):
+        kind: str = Field(min_length=1, max_length=50)
+        payload: dict[str, Any] = Field(default_factory=dict)
+
+    @app.post("/api/adaptive/demo")
+    def adaptive_demo() -> dict[str, Any]:
+        """One-click C3 demo seed: RestockBot with signed purchase authority."""
+        from core.adaptivecore.application.demo import run_adaptive_demo
+
+        result = run_adaptive_demo(svc)
+        adaptive_svc.bind_agent(result["agent_key"])
+        return result
+
+    @app.get("/api/adaptive/scenarios")
+    def adaptive_scenarios() -> dict[str, Any]:
+        return {"scenarios": adaptive_svc.list_scenarios()}
+
+    @app.post("/api/adaptive/runs", status_code=201)
+    def adaptive_start(body: StartRunIn) -> dict[str, Any]:
+        try:
+            return adaptive_svc.start_run(scenario=body.scenario, mode=body.mode)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/adaptive/runs/{run_id}/events", status_code=201)
+    def adaptive_inject(run_id: str, body: InjectEventIn) -> dict[str, Any]:
+        try:
+            return adaptive_svc.inject_event(run_id=run_id, kind=body.kind,
+                                             payload=body.payload)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/adaptive/runs/{run_id}/advance")
+    def adaptive_advance(run_id: str) -> dict[str, Any]:
+        try:
+            return adaptive_svc.advance(run_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/adaptive/runs/{run_id}/run-to-end")
+    def adaptive_run_to_end(run_id: str) -> dict[str, Any]:
+        try:
+            return adaptive_svc.run_to_end(run_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/adaptive/runs/{run_id}")
+    def adaptive_get(run_id: str) -> dict[str, Any]:
+        try:
+            return adaptive_svc.get_run(run_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/adaptive/runs")
+    def adaptive_list(limit: int = 50) -> dict[str, Any]:
+        return {"runs": adaptive_svc.list_runs(limit=limit)}
 
     return app

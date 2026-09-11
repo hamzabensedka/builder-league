@@ -115,4 +115,4 @@ def test_list_decisions_and_domains(client):
     assert lst["decisions"] and lst["decisions"][0]["outcome"]
     doms = client.get("/api/decision/domains").json()
     names = {d["domain"] for d in doms["domains"]}
-    assert names == {"refund", "deploy", "moderation"}
+    assert {"refund", "deploy", "moderation"} <= names

@@ -190,6 +190,13 @@ MODERATION = DomainPolicy(
 
 DOMAINS: dict[str, DomainPolicy] = {p.domain: p for p in [REFUND, DEPLOY, MODERATION]}
 
+
+def register_domain(policy: DomainPolicy) -> None:
+    """Register an additional domain (e.g. the purchase policy AdaptiveCore
+    gates through). Registration is explicit composition, validated."""
+    policy.validate()
+    DOMAINS[policy.domain] = policy
+
 for _p in DOMAINS.values():
     _p.validate()
 
