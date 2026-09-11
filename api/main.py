@@ -13,6 +13,8 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from core.simcore.adapters.memory import InMemoryLedgerStore, InMemorySimulationStore
+from core.simcore.application.services import SimService
 from core.trustcore.adapters.memory import (
     InMemoryAgentRegistry,
     InMemoryCredentialStore,
@@ -22,6 +24,8 @@ from core.trustcore.adapters.memory import (
 from core.trustcore.application.services import TrustService
 from core.trustcore.domain.credentials import Credential, CredentialType
 from core.trustcore.domain.crypto import verify_payload
+
+SIM_LIMIT = 1000.0
 
 # ---------------------------------------------------------------- schemas
 
@@ -93,6 +97,15 @@ def create_app(service: TrustService | None = None) -> FastAPI:
 
     app = FastAPI(title="Builder League — TrustCore", version="0.1.0")
     app.state.service = svc
+    # C8 SimCore shares the same TrustService instance: simulation forks and
+    # execution both act on the REAL trust state, never a mock.
+    sim_svc = SimService(
+        trust=svc,
+        ledger_store=InMemoryLedgerStore(),
+        simulations=InMemorySimulationStore(),
+        limit=SIM_LIMIT,
+    )
+    app.state.sim_service = sim_svc
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -225,6 +238,86 @@ def create_app(service: TrustService | None = None) -> FastAPI:
                 }
                 for r in svc.list_receipts(limit=limit)
             ]
+        }
+
+    # ---------------------------------------------------------------- C8 SimCore
+    # The approval payload IS the computed before/after diff — no confirm dialog.
+
+    class SimulateIn(BaseModel):
+        requester_key: str
+        amount: float = Field(gt=0)
+        description: str = Field(default="", max_length=1000)
+
+    class HoldIn(BaseModel):
+        agent_key: str = Field(min_length=1)
+        amount: float = Field(gt=0)
+
+    @app.post("/api/sim/demo")
+    def sim_demo() -> dict[str, Any]:
+        """One-click C8 demo seed: funded buyer with signed authority + history."""
+        from core.simcore.application.demo import run_sim_demo
+
+        return run_sim_demo(sim_svc)
+
+    @app.post("/api/sim/simulate", status_code=201)
+    def sim_simulate(body: SimulateIn) -> dict[str, Any]:
+        return sim_svc.simulate(
+            requester_key=body.requester_key,
+            amount=body.amount,
+            description=body.description,
+        )
+
+    @app.get("/api/sim/simulations")
+    def sim_list(limit: int = 50) -> dict[str, Any]:
+        return {"simulations": sim_svc.list(limit=limit)}
+
+    @app.get("/api/sim/{sim_id}")
+    def sim_get(sim_id: str) -> dict[str, Any]:
+        record = sim_svc.get(sim_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="unknown simulation")
+        return record
+
+    @app.post("/api/sim/{sim_id}/execute")
+    def sim_execute(sim_id: str) -> dict[str, Any]:
+        try:
+            return sim_svc.execute(sim_id)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/sim/{sim_id}/reject")
+    def sim_reject(sim_id: str) -> dict[str, Any]:
+        try:
+            return sim_svc.reject(sim_id)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/sim/{sim_id}/rollback")
+    def sim_rollback(sim_id: str) -> dict[str, Any]:
+        try:
+            return sim_svc.rollback(sim_id)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/sim/hold", status_code=201)
+    def sim_hold(body: HoldIn) -> dict[str, Any]:
+        """A real concurrent hold by a separate actor — the failure-test lever."""
+        return sim_svc.place_hold(
+            agent_key=body.agent_key, amount=body.amount, reference="ui-hold"
+        )
+
+    @app.get("/api/sim/ledger/state")
+    def sim_ledger() -> dict[str, Any]:
+        ledger = sim_svc._ledger_store.get()  # demo read surface
+        return {
+            "entries": [e.as_dict() for e in ledger.entries],
+            "spent_total": ledger.spent_total(),
+            "active_holds": ledger.active_holds_total(),
+            "projected_balance": ledger.projected_balance(),
+            "limit": SIM_LIMIT,
         }
 
     return app
