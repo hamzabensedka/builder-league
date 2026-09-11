@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AdaptiveRun from './adaptive/AdaptiveRun'
 import DecisionConsole from './decision/DecisionConsole'
+import Memory from './memory/Memory'
 import SimGate from './sim/SimGate'
 import Tower from './tower/Tower'
 
@@ -310,6 +311,7 @@ export default function App() {
               ['sim', 'C8 · Simulate first'],
               ['adaptive', 'C3 · Adaptive Agent'],
               ['tower', 'C5 · Control Tower'],
+              ['memory', 'C4 · Memory'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -336,10 +338,11 @@ export default function App() {
         {tab === 'sim' && <SimGate />}
         {tab === 'adaptive' && <AdaptiveRun />}
         {tab === 'tower' && <Tower />}
+        {tab === 'memory' && <Memory />}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
-          <span className="mono">TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore · Builders League, C1, C2, C3, C5 &amp; C8</span>
-          <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first · plan/observe/revise · agent ops control plane</span>
+          <span className="mono">TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore · Builders League, C1, C2, C3, C4, C5 &amp; C8</span>
+          <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first · plan/observe/revise · agent ops control plane · self-doubting memory</span>
         </footer>
       </div>
     </div>

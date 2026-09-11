@@ -8,6 +8,7 @@ Mounts under /api/trust so later challenges get sibling routers
 (/api/decisions, /api/memory, ...) on the same app — one deployment.
 """
 
+from datetime import UTC
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
@@ -28,6 +29,14 @@ from core.adaptivecore.application.services import AdaptiveService
 from core.decisioncore.adapters.memory import InMemoryDecisionStore
 from core.decisioncore.application.services import DecisionService, make_authority_probe
 from core.decisioncore.domain.policies import register_domain
+from core.memorycore.adapters.memory import (
+    InMemoryMemoryStore,
+    InMemoryTombstoneLog,
+)
+from core.memorycore.adapters.memory import (
+    ManualClock as MemoryClock,
+)
+from core.memorycore.application.services import MemoryService
 from core.simcore.adapters.memory import InMemoryLedgerStore, InMemorySimulationStore
 from core.simcore.application.services import SimService
 from core.towercore.adapters.memory import InMemoryNotifier, attach_notifier
@@ -176,6 +185,26 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     attach_notifier(tower_svc.stream, tower_notifier)
     app.state.tower_service = tower_svc
     app.state.tower_notifier = tower_notifier
+
+    # C4 MemoryCore: the self-doubting memory layer. Composes the SAME
+    # TrustService — revocations are signature-verified and every learn /
+    # recall / forget lands in the SAME append-only receipt log. The demo
+    # clock is manual: staleness is a deliberate scenario beat, not a race.
+    from datetime import datetime
+
+    memory_clock = MemoryClock(datetime.now(UTC))
+    memory_svc = MemoryService(
+        store=InMemoryMemoryStore(),
+        tombstones=InMemoryTombstoneLog(),
+        clock=memory_clock,
+        trust=svc,
+    )
+    app.state.memory_service = memory_svc
+    app.state.memory_clock = memory_clock
+    # per-demo user keypair, created by /api/memory/demo; the private half
+    # stays server-side ONLY so the demo can sign the revocation beat — it is
+    # never returned by any endpoint
+    app.state.memory_demo_keys = {}
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -619,5 +648,128 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         """Exportable audit log (bonus: compliance). Canonical events, append
         order — the full forensic trail from enrollment to containment."""
         return {"events": tower_svc.export_audit()}
+
+    # ---------------------------------------------------------------- C4 MemoryCore
+    # The memory that knows it might be wrong: tagged writes, reliance-receipt
+    # recalls, explicit + receipted forgetting. Revocation is signature-gated
+    # (fail-closed); the demo signs beats with its server-held demo key.
+
+    class LearnIn(BaseModel):
+        slot: str = Field(min_length=1, max_length=100)
+        value: str = Field(min_length=1, max_length=500)
+        source: str = Field(min_length=1, max_length=100)
+        kind: Literal["user_stated", "observed", "inferred", "imported"]
+        extraction_confidence: float = Field(gt=0, le=1)
+        user_id: str = Field(min_length=1, max_length=100)
+        agent_id: str = Field(default="maya", min_length=1, max_length=100)
+        task_id: str | None = Field(default=None, max_length=100)
+        ttl_days: int | None = Field(default=None, gt=0)
+
+    class RecallIn(BaseModel):
+        query: str = Field(min_length=1, max_length=500)
+        user_id: str = Field(min_length=1, max_length=100)
+        agent_id: str = Field(default="maya", min_length=1, max_length=100)
+        task_id: str | None = Field(default=None, max_length=100)
+
+    class ForgetIn(BaseModel):
+        fact_id: str = Field(min_length=1)
+        user_key: str = Field(min_length=1)
+        signature: str = Field(min_length=1)
+        reason: str = Field(default="user revoked", min_length=1, max_length=500)
+
+    @app.post("/api/memory/demo")
+    def memory_demo() -> dict[str, Any]:
+        """One-click C4 seed: Maya learns three differently-tagged facts."""
+        from core.memorycore.application.demo import seed_demo
+        from core.trustcore.domain.crypto import KeyPair
+
+        user_key = KeyPair.generate()
+        app.state.memory_demo_keys["demo-user"] = user_key
+        return seed_demo(memory_svc, user_key=user_key)
+
+    @app.post("/api/memory/demo/unsure")
+    def memory_demo_unsure() -> dict[str, Any]:
+        """Beat 2: trip-planning recall — the 'I might be wrong' moment."""
+        from core.memorycore.application.demo import beat_unsure
+
+        return beat_unsure(memory_svc)
+
+    @app.post("/api/memory/demo/correct")
+    def memory_demo_correct() -> dict[str, Any]:
+        """Beat 3: user correction supersedes the weak inference."""
+        from core.memorycore.application.demo import beat_correct
+
+        return beat_correct(memory_svc)
+
+    @app.post("/api/memory/demo/age")
+    def memory_demo_age() -> dict[str, Any]:
+        """Beat 4: time passes; the imported fact goes stale and is swept."""
+        from core.memorycore.application.demo import beat_age
+
+        return beat_age(memory_svc, memory_clock)
+
+    @app.post("/api/memory/demo/revoke")
+    def memory_demo_revoke() -> dict[str, Any]:
+        """Beat 5: the user SIGNS 'forget my location' — real revocation."""
+        from core.memorycore.application.demo import beat_revoke
+
+        user_key = app.state.memory_demo_keys.get("demo-user")
+        if user_key is None:
+            raise HTTPException(status_code=409, detail="run /api/memory/demo first")
+        try:
+            return beat_revoke(memory_svc, user_key=user_key)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post("/api/memory/learn", status_code=201)
+    def memory_learn(body: LearnIn) -> dict[str, Any]:
+        try:
+            return memory_svc.learn(
+                slot=body.slot,
+                value=body.value,
+                source=body.source,
+                kind=body.kind,
+                extraction_confidence=body.extraction_confidence,
+                user_id=body.user_id,
+                agent_id=body.agent_id,
+                task_id=body.task_id,
+                ttl_days=body.ttl_days,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.post("/api/memory/recall")
+    def memory_recall(body: RecallIn) -> dict[str, Any]:
+        return memory_svc.recall(
+            query=body.query,
+            user_id=body.user_id,
+            agent_id=body.agent_id,
+            task_id=body.task_id,
+        )
+
+    @app.post("/api/memory/forget")
+    def memory_forget(body: ForgetIn) -> dict[str, Any]:
+        try:
+            return memory_svc.forget(
+                fact_id=body.fact_id,
+                user_key=body.user_key,
+                signature=body.signature,
+                reason=body.reason,
+            )
+        except ValueError as exc:
+            status = 403 if "signature" in str(exc) else 404
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/memory/sweep")
+    def memory_sweep() -> dict[str, Any]:
+        return memory_svc.sweep()
+
+    @app.get("/api/memory/inspect")
+    def memory_inspect(user_id: str, agent_id: str = "maya") -> dict[str, Any]:
+        return memory_svc.inspect(user_id=user_id, agent_id=agent_id)
+
+    @app.get("/api/memory/events")
+    def memory_events(limit: int = 100) -> dict[str, Any]:
+        return memory_svc.list_events(limit=limit)
 
     return app

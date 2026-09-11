@@ -1,6 +1,6 @@
-# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore (C1 · C2 · C3 · C5 · C8)
+# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore (C1 · C2 · C3 · C4 · C5 · C8)
 
-One modular monolith for the DOO Builders League. Five challenges live here:
+One modular monolith for the DOO Builders League. Six challenges live here:
 
 - **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
   credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
@@ -49,6 +49,21 @@ One modular monolith for the DOO Builders League. Five challenges live here:
   [`docs/architecture-c5.md`](docs/architecture-c5.md) ·
   [`docs/thesis-c5.md`](docs/thesis-c5.md) ·
   [`demo/script-c5.md`](demo/script-c5.md).
+- **C4 MemoryCore** — a memory layer that **knows it might be wrong**. Every
+  fact is tagged with **source** (user_stated > observed > inferred >
+  imported), **confidence** (source trust × extraction quality, boosted by
+  corroboration), **freshness** (half-life decay + optional TTL), and
+  **scope** (user / agent / task — retrieval is gated, task facts never
+  leak). Retrieval returns a **reliance receipt** — what it's relying on, a
+  calibrated confidence, and named gaps — and below the acting threshold the
+  verdict is **"I might be wrong about this"**. Forgetting is explicit and
+  receipted: stale facts are swept, same-slot contradictions trust *neither*
+  side at equal strength, and **signed revocations** (Ed25519, fail-closed)
+  cascade to derived facts. All of it lands in the shared append-only
+  receipt log; no LLM, no embeddings. See
+  [`docs/architecture-c4.md`](docs/architecture-c4.md) ·
+  [`docs/thesis-c4.md`](docs/thesis-c4.md) ·
+  [`demo/script-c4.md`](demo/script-c4.md).
 
 **Live demo:** https://builder-league-trust.onrender.com — the inspector UI is
 served at `/`; API under `/api/trust/*` (free tier: first request after idle
@@ -210,6 +225,40 @@ API: `POST /api/tower/demo`, `GET /api/tower/fleet`, `GET /api/tower/stream`
   enforcement boundary — enforcement lives in the gate and the cores.
 - **SSE on free-tier hosting**: first connection after idle waits on cold start;
   the UI falls back to polling `/api/tower/fleet` if the stream drops.
+
+## C4 quick drive (Memory That Knows It Might Be Wrong)
+
+Open the UI → **C4 · Memory** tab:
+
+1. **Run the demo** — Maya learns three differently-tagged facts: "prefers
+   window seat" (user-stated, 95%), "lives in Lisbon" (inferred once, 40%),
+   "flies TAP" (CRM import, 30-day TTL).
+2. **2 · Plan a trip** — the *"I might be wrong"* moment: seat recall is
+   Confident; city recall is **unsure** (40% < 55% threshold), gaps named.
+3. **3 · User corrects** — "moved to Porto" supersedes the weak inference;
+   Lisbon is tombstoned with reason `superseded`, recall is now Confident.
+4. **4 · Time passes** — 45 simulated days; the sweeper kills the TTL-expired
+   import explicitly and the airline recall goes blank.
+5. **5 · Sign "forget my location"** — a real Ed25519-signed revocation
+   tombstones the city fact (cascading to derived facts); the inspector shows
+   the tombstone, recall no longer surfaces it.
+
+API: `POST /api/memory/demo` (+ `/demo/unsure|correct|age|revoke` beats),
+`POST /api/memory/learn|recall|forget|sweep`, `GET /api/memory/inspect`,
+`GET /api/memory/events`.
+
+### Honest limits ("this breaks when…")
+
+- **Keyword/slot retrieval, no embeddings**: a query with zero lexical overlap
+  ("where do I live" vs slot `user.city`) won't match. Deliberate: the
+  confidence/forgetting model is the graded substance, and lexical matching
+  keeps relevance fully inspectable. Semantic matching would slot in behind
+  the same `recall` port.
+- **In-memory stores**: facts and tombstones reset on redeploy — swap the
+  adapters for SQLite to persist; the ports isolate that change.
+- **Demo key custody**: the demo's user keypair is held server-side only so
+  the revocation beat can be one click; it is never returned by any endpoint.
+  Production revocation would be signed client-side like TrustCore issuers.
 
 ## C2 quick drive (The Decision Engine)
 
