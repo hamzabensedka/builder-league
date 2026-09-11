@@ -1,6 +1,6 @@
-# Builder League — TrustCore + DecisionCore + SimCore (C1 · C2 · C8)
+# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore (C1 · C2 · C3 · C8)
 
-One modular monolith for the DOO Builders League. Three challenges live here:
+One modular monolith for the DOO Builders League. Four challenges live here:
 
 - **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
   credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
@@ -23,6 +23,18 @@ One modular monolith for the DOO Builders League. Three challenges live here:
   [`docs/architecture-c8.md`](docs/architecture-c8.md) ·
   [`docs/thesis-c8.md`](docs/thesis-c8.md) ·
   [`demo/script-c8.md`](demo/script-c8.md).
+- **C3 AdaptiveCore** — an **adaptive agent**: a plan → execute → observe →
+  re-evaluate loop with persisted state. Every step declares typed
+  **assumptions**; world changes arrive as **events with real side effects**;
+  a contradiction (and only a contradiction) fires a deterministic re-plan,
+  receipted with an **"I changed my mind because…"** trace and a structural
+  plan diff. **Damping** (hysteresis, revision budget, A→B→A oscillation
+  detection) contains runaway adaptation; a **non-adaptive baseline** runs the
+  same world blind and fails against real enforced state. No LLM anywhere on
+  the detection/re-planning path. See
+  [`docs/architecture-c3.md`](docs/architecture-c3.md) ·
+  [`docs/thesis-c3.md`](docs/thesis-c3.md) ·
+  [`demo/script-c3.md`](demo/script-c3.md).
 
 **Live demo:** https://builder-league-trust.onrender.com — the inspector UI is
 served at `/`; API under `/api/trust/*` (free tier: first request after idle
@@ -116,10 +128,40 @@ AI wrote implementation against failing tests (TDD) under gates
 ## Tests
 
 ```bash
-.venv/Scripts/python -m pytest        # full suite (C1 + C2 + C8)
+.venv/Scripts/python -m pytest        # full suite (C1 + C2 + C3 + C8)
 .venv/Scripts/python -m ruff check .  # lint
-.venv/Scripts/lint-imports            # architecture contracts (11 kept)
+.venv/Scripts/lint-imports            # architecture contracts (16 kept)
 ```
+
+## C3 quick drive (The Adaptive Agent)
+
+Open the UI → **C3 · Adaptive Agent** tab:
+
+1. **Start adaptive + baseline** (scenario A) — seeds RestockBot with signed
+   $1,000 purchase authority, runs the same world twice side by side.
+2. **Advance steps**, then **⚡ inject the price spike** mid-run: the
+   contradiction fires on the executed verify step (cascade), the revision
+   card shows expected-vs-observed + plan diff + gate verdict + SimCore
+   preview, and the run completes via SouthSupply ($780).
+3. **Run the baseline blind** — same spike, no detection; it collides with
+   the enforced budget invariant.
+4. **Failure test** — scenario C (flapping price): the agent flip-flops
+   suppliers twice, then A→B→A oscillation detection escalates to a human,
+   receipted; further flaps change nothing.
+
+API: `POST /api/adaptive/demo`, `GET /api/adaptive/scenarios`,
+`POST /api/adaptive/runs`, `POST /api/adaptive/runs/{id}/events`,
+`POST /api/adaptive/runs/{id}/advance`, `GET /api/adaptive/runs/{id}`.
+
+### Honest limits ("this breaks when…")
+
+- **Two-run demos share one budget**: running both columns to completion
+  without a compensating refund leaves the second run with less headroom
+  (the world is real, not per-run sandboxed). The UI walks one column at a
+  time for this reason.
+- **In-memory stores**: runs, revisions, and events reset on redeploy —
+  swap adapters for SQLite to persist across restarts; the ports already
+  isolate that change.
 
 ## C2 quick drive (The Decision Engine)
 
