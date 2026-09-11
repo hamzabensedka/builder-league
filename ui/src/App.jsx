@@ -1,72 +1,217 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const api = {
   agents: () => fetch('/api/trust/agents').then((r) => r.json()),
   profile: (key) =>
     fetch(`/api/trust/profile?subject_key=${encodeURIComponent(key)}`).then((r) => r.json()),
-  receipts: () => fetch('/api/trust/receipts?limit=20').then((r) => r.json()),
+  receipts: () => fetch('/api/trust/receipts?limit=30').then((r) => r.json()),
 }
 
-function shortKey(key) {
-  return key ? `${key.slice(0, 10)}…${key.slice(-4)}` : ''
+const shortKey = (key) => (key ? `${key.slice(0, 8)}…${key.slice(-4)}` : '')
+
+const TYPE_LABEL = {
+  AuthorityGrant: 'Authority grant',
+  TaskCompletion: 'Task completion',
+  CapabilityAttestation: 'Capability attestation',
+  Vouch: 'Vouch',
 }
 
-function DecisionBadge({ decision }) {
-  const styles = {
-    allow: 'bg-emerald-950 text-emerald-300 border-emerald-800',
-    refuse: 'bg-red-950 text-red-300 border-red-800',
-    escalate: 'bg-amber-950 text-amber-300 border-amber-800',
-  }
+function Badge({ kind, children }) {
+  return <span className={`badge badge-${kind}`}>{children}</span>
+}
+
+function Dot({ color }) {
   return (
     <span
-      className={`inline-block px-2 py-0.5 text-xs font-mono uppercase tracking-wider border rounded ${styles[decision] || ''}`}
-    >
-      {decision}
-    </span>
+      className="inline-block w-1.5 h-1.5 rounded-full"
+      style={{ background: color }}
+    />
   )
 }
 
-function CredentialRow({ cred }) {
+/* ------------------------------------------------------------------ */
+
+function AgentList({ agents, selected, onPick }) {
+  return (
+    <div className="card p-5 fade-up">
+      <p className="mono text-[11px] uppercase tracking-[0.12em] text-[var(--ink-soft)] mb-4">
+        Fleet
+      </p>
+      {agents.length === 0 && (
+        <p className="text-sm text-[var(--ink-soft)]">
+          No agents registered yet — run the demo script.
+        </p>
+      )}
+      <div className="space-y-1.5">
+        {agents.map((a, i) => (
+          <button
+            key={a.id}
+            onClick={() => onPick(a)}
+            style={{ animationDelay: `${i * 60}ms` }}
+            className={`pressable fade-up w-full text-left px-3.5 py-3 rounded-lg border transition-colors ${
+              selected?.id === a.id
+                ? 'border-[var(--ink)] bg-[var(--canvas)]'
+                : 'border-transparent hover:bg-[var(--canvas)]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{a.name}</span>
+              <span className="text-xs text-[var(--ink-soft)]">{a.owner}</span>
+            </div>
+            <div className="mono text-[11px] text-[var(--ink-soft)] mt-0.5">
+              {shortKey(a.public_key)}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Credential({ cred, index }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="border border-neutral-800 rounded mb-2">
+    <div
+      className="fade-up border-b last:border-b-0"
+      style={{ animationDelay: `${index * 60}ms`, borderColor: 'var(--line)' }}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-neutral-900"
+        className="pressable w-full flex items-center justify-between py-3 text-left"
       >
-        <span className="font-mono text-sm">{cred.type}</span>
-        <span className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500 font-mono">{shortKey(cred.issuer_key)}</span>
+        <div className="flex items-center gap-3">
+          <Dot color={cred.valid ? 'var(--green-ink)' : 'var(--red-ink)'} />
+          <span className="text-sm font-medium">{TYPE_LABEL[cred.type] ?? cred.type}</span>
+        </div>
+        <span className="flex items-center gap-2.5">
           {cred.valid ? (
-            <span className="text-emerald-400 text-xs font-mono">✓ verified</span>
+            <Badge kind="allow">Verified</Badge>
           ) : (
-            <span className="text-red-400 text-xs font-mono">✗ {cred.failures.join(', ')}</span>
+            <Badge kind="refuse">{cred.failures[0]?.replace('_', ' ')}</Badge>
           )}
+          <span className="text-[var(--ink-soft)] text-sm">{open ? '−' : '+'}</span>
         </span>
       </button>
       {open && (
-        <pre className="px-3 py-2 text-xs text-neutral-400 overflow-x-auto border-t border-neutral-800">
-          {JSON.stringify({ claim: cred.claim, scope: cred.scope, expires_at: cred.expires_at }, null, 2)}
-        </pre>
+        <div className="pb-4 pl-6">
+          <p className="mono text-[11px] text-[var(--ink-soft)] mb-2">
+            issuer {shortKey(cred.issuer_key)} · expires {cred.expires_at.slice(0, 10)}
+          </p>
+          <pre className="mono text-[11px] leading-relaxed bg-[var(--canvas)] rounded-lg p-3 overflow-x-auto">
+            {JSON.stringify({ claim: cred.claim, scope: cred.scope }, null, 2)}
+          </pre>
+        </div>
       )}
     </div>
   )
 }
+
+function Profile({ agent, profile }) {
+  if (!agent) {
+    return (
+      <div className="card p-5 fade-up h-full flex items-center justify-center min-h-[220px]">
+        <p className="text-sm text-[var(--ink-soft)]">
+          Select an agent to inspect its signed claims.
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="card p-5 fade-up">
+      <div className="flex items-baseline justify-between mb-1">
+        <h3 className="serif text-xl font-medium">{agent.name}</h3>
+        <span className="mono text-[11px] text-[var(--ink-soft)]">{shortKey(agent.public_key)}</span>
+      </div>
+      <p className="text-xs text-[var(--ink-soft)] mb-5">
+        Every count below traces to an individually verifiable signed claim. No aggregate score.
+      </p>
+      {profile && (
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {[
+              ['Authority grants', profile.counts.valid_authority_grants, 'allow'],
+              ['Completions', profile.counts.valid_completions, 'info'],
+              ['Invalid / revoked', profile.counts.invalid_or_revoked, 'refuse'],
+            ].map(([label, n, kind]) => (
+              <div key={label} className="rounded-lg bg-[var(--canvas)] px-3 py-2.5">
+                <div className="serif text-2xl font-medium leading-none">{n}</div>
+                <div className="text-[11px] text-[var(--ink-soft)] mt-1.5">{label}</div>
+              </div>
+            ))}
+          </div>
+          <div>
+            {profile.credentials.map((c, i) => (
+              <Credential key={c.id} cred={c} index={i} />
+            ))}
+            {profile.credentials.length === 0 && (
+              <p className="text-sm text-[var(--ink-soft)]">No credentials on record.</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function ReceiptFeed({ receipts }) {
+  const prevIds = useRef(new Set())
+  useEffect(() => {
+    prevIds.current = new Set(receipts.map((r) => r.id))
+  })
+  return (
+    <div className="card p-5 fade-up">
+      <p className="mono text-[11px] uppercase tracking-[0.12em] text-[var(--ink-soft)] mb-4">
+        Decision receipts
+      </p>
+      {receipts.length === 0 && (
+        <p className="text-sm text-[var(--ink-soft)]">No decisions yet.</p>
+      )}
+      <div className="space-y-3.5">
+        {receipts.map((r, i) => {
+          const isNew = !prevIds.current.has(r.id)
+          return (
+            <div
+              key={r.id}
+              className={isNew ? 'fade-up' : ''}
+              style={isNew ? {} : { animationDelay: `${i * 40}ms` }}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <Badge kind={r.decision}>{r.decision}</Badge>
+                <span className="mono text-[10px] text-[var(--ink-soft)]">
+                  {r.ts.slice(11, 19)} UTC · llm off
+                </span>
+              </div>
+              <p className="text-[13px] leading-snug text-[var(--ink)]">
+                <span className="font-medium">{r.action}</span>
+                <span className="text-[var(--ink-soft)]"> — {r.reasoning}</span>
+              </p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 
 export default function App() {
   const [agents, setAgents] = useState([])
   const [selected, setSelected] = useState(null)
   const [profile, setProfile] = useState(null)
   const [receipts, setReceipts] = useState([])
+  const [online, setOnline] = useState(true)
 
   const refresh = useCallback(async () => {
-    const [a, r] = await Promise.all([api.agents(), api.receipts()])
-    setAgents(a.agents)
-    setReceipts(r.receipts)
-    if (selected) {
-      setProfile(await api.profile(selected.public_key))
+    try {
+      const [a, r] = await Promise.all([api.agents(), api.receipts()])
+      setAgents(a.agents)
+      setReceipts(r.receipts)
+      setOnline(true)
+    } catch {
+      setOnline(false)
     }
-  }, [selected])
+  }, [])
 
   useEffect(() => {
     refresh()
@@ -74,93 +219,51 @@ export default function App() {
     return () => clearInterval(t)
   }, [refresh])
 
-  const pick = async (agent) => {
-    setSelected(agent)
-    setProfile(await api.profile(agent.public_key))
-  }
+  useEffect(() => {
+    if (!selected) return
+    let cancelled = false
+    const load = async () => {
+      const p = await api.profile(selected.public_key)
+      if (!cancelled) setProfile(p)
+    }
+    load()
+    const t = setInterval(load, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [selected])
 
   return (
-    <div className="min-h-screen p-6 max-w-6xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-2xl font-mono font-bold tracking-tight">TrustCore Inspector</h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          Every number below traces to a specific signed claim. There is no aggregate score.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* fleet */}
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-widest text-neutral-500 mb-3">Agents</h2>
-          {agents.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => pick(a)}
-              className={`w-full text-left px-3 py-2 mb-2 border rounded font-mono text-sm transition-colors ${
-                selected?.id === a.id
-                  ? 'border-neutral-500 bg-neutral-900'
-                  : 'border-neutral-800 hover:border-neutral-700'
-              }`}
-            >
-              <div className="flex justify-between">
-                <span>{a.name}</span>
-                <span className="text-neutral-500 text-xs">{a.owner}</span>
-              </div>
-              <div className="text-xs text-neutral-600 mt-1">{shortKey(a.public_key)}</div>
-            </button>
-          ))}
-          {agents.length === 0 && (
-            <p className="text-sm text-neutral-600">No agents registered. Run the demo.</p>
-          )}
-        </section>
-
-        {/* profile */}
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-widest text-neutral-500 mb-3">
-            {selected ? `Trust profile — ${selected.name}` : 'Trust profile'}
-          </h2>
-          {profile ? (
-            <>
-              <div className="flex gap-4 mb-4 text-sm font-mono">
-                <span className="text-emerald-400">
-                  {profile.counts.valid_authority_grants} authority
-                </span>
-                <span className="text-sky-400">{profile.counts.valid_completions} completions</span>
-                <span className="text-red-400">{profile.counts.invalid_or_revoked} invalid</span>
-              </div>
-              {profile.credentials.map((c) => (
-                <CredentialRow key={c.id} cred={c} />
-              ))}
-            </>
-          ) : (
-            <p className="text-sm text-neutral-600">Select an agent to inspect its claims.</p>
-          )}
-        </section>
-
-        {/* receipts */}
-        <section>
-          <h2 className="text-xs font-mono uppercase tracking-widest text-neutral-500 mb-3">
-            Decision receipts
-          </h2>
-          <div className="space-y-2">
-            {receipts.map((r) => (
-              <div key={r.id} className="border border-neutral-800 rounded px-3 py-2">
-                <div className="flex items-center justify-between">
-                  <DecisionBadge decision={r.decision} />
-                  <span className="text-xs text-neutral-600 font-mono">
-                    {r.ts.slice(11, 19)} · llm={String(r.llm_called)}
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-400 mt-1 font-mono">
-                  {r.action} — {r.reasoning}
-                </p>
-              </div>
-            ))}
-            {receipts.length === 0 && (
-              <p className="text-sm text-neutral-600">No decisions yet.</p>
-            )}
+    <div className="min-h-screen">
+      <div className="max-w-5xl mx-auto px-6 py-14 md:py-20">
+        <header className="mb-12 fade-up">
+          <div className="flex items-center gap-2 mb-4">
+            <Dot color={online ? 'var(--green-ink)' : 'var(--red-ink)'} />
+            <span className="mono text-[11px] uppercase tracking-[0.12em] text-[var(--ink-soft)]">
+              {online ? 'Connected to TrustCore' : 'API unreachable'}
+            </span>
           </div>
-        </section>
+          <h1 className="serif text-4xl md:text-5xl font-medium leading-[1.05] mb-4">
+            Who may this agent trust?
+          </h1>
+          <p className="text-[15px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
+            Every agent here carries signed, verifiable credentials — authority grants,
+            completed-task vouches, attestations. Decisions are enforced by cryptography
+            and policy, never by a model. Each one leaves a receipt.
+          </p>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
+          <AgentList agents={agents} selected={selected} onPick={setSelected} />
+          <Profile agent={selected} profile={profile} />
+          <ReceiptFeed receipts={receipts} />
+        </div>
+
+        <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
+          <span className="mono">TrustCore · Builders League, Challenge 1</span>
+          <span>Ed25519 · VC-shaped claims · append-only receipts</span>
+        </footer>
       </div>
     </div>
   )

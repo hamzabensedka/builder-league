@@ -98,12 +98,22 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    # Serve the built inspector UI at / when available; fall back to the static
+    # landing page for API-only deploys.
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse, HTMLResponse
+    from fastapi.staticfiles import StaticFiles
+
+    ui_dist = Path(__file__).resolve().parent.parent / "ui" / "dist"
+    if (ui_dist / "assets").is_dir():
+        app.mount("/assets", StaticFiles(directory=ui_dist / "assets"), name="assets")
+
     @app.get("/", include_in_schema=False)
     def root() -> Any:
-        from pathlib import Path
-
-        from fastapi.responses import HTMLResponse
-
+        index = ui_dist / "index.html"
+        if index.is_file():
+            return FileResponse(index)
         landing = Path(__file__).with_name("landing.html")
         return HTMLResponse(landing.read_text(encoding="utf-8"))
 

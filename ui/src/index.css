@@ -1,11 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  --canvas: #f7f6f3;
+  --surface: #ffffff;
+  --ink: #1a1a18;
+  --ink-soft: #6f6d67;
+  --line: rgba(0, 0, 0, 0.08);
+  --green-bg: #edf3ec;
+  --green-ink: #346538;
+  --red-bg: #fdebec;
+  --red-ink: #9f2f2d;
+  --amber-bg: #fbf3db;
+  --amber-ink: #956400;
+  --blue-bg: #e1f3fe;
+  --blue-ink: #1f6c9f;
+}
+
+html {
+  background: var(--canvas);
 }
 
 body {
-  @apply bg-neutral-950 text-neutral-200 antialiased;
+  font-family: 'Inter Tight', system-ui, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
+
+.serif {
+  font-family: 'Newsreader', Georgia, serif;
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+}
+
+.badge-allow { background: var(--green-bg); color: var(--green-ink); }
+.badge-refuse { background: var(--red-bg); color: var(--red-ink); }
+.badge-escalate { background: var(--amber-bg); color: var(--amber-ink); }
+.badge-info { background: var(--blue-bg); color: var(--blue-ink); }
+
+.fade-up {
+  animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pressable {
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.pressable:active { transform: scale(0.98); }

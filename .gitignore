@@ -19,7 +19,6 @@ venv/
 
 # Node / UI
 node_modules/
-ui/dist/
 ui/node_modules/
 
 # Misc
