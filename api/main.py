@@ -98,6 +98,37 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/", include_in_schema=False)
+    def root() -> Any:
+        from fastapi.responses import HTMLResponse
+
+        return HTMLResponse(
+            """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>TrustCore — The Agent That Earns Trust</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{background:#0a0a0a;color:#e5e5e5;font-family:ui-monospace,monospace;
+       max-width:720px;margin:4rem auto;padding:0 1rem;line-height:1.6}
+  h1{font-size:1.4rem} a{color:#38bdf8} code{background:#171717;padding:.1rem .35rem;border-radius:4px}
+  .ok{color:#34d399} .dim{color:#737373}
+</style></head><body>
+<h1>TrustCore <span class="ok">● live</span></h1>
+<p class="dim">Challenge 1 — The Agent That Earns Trust. Verifiable credentials
+(Ed25519, VC-shaped), deterministic policy gating, append-only decision receipts.
+No LLM on the enforcement path.</p>
+<p>Try it:</p>
+<ul>
+  <li><a href="/api/trust/agents"><code>GET /api/trust/agents</code></a> — registered agents</li>
+  <li><a href="/api/trust/receipts"><code>GET /api/trust/receipts</code></a> — decision receipts (allow / refuse, <code>llm_called=false</code>)</li>
+  <li><code>GET /api/trust/profile?subject_key=&lt;base64-key&gt;</code> — trust profile per agent</li>
+  <li><a href="/docs"><code>GET /docs</code></a> — interactive API (decide / issue / revoke)</li>
+</ul>
+<p class="dim">Full 90-second scenario (accept → forgery → scope escape → revocation):
+<code>python demo/run_demo.py --base https://builder-league-trust.onrender.com</code></p>
+<p class="dim">Repo: <a href="https://github.com/hamzabensedka/builder-league">github.com/hamzabensedka/builder-league</a></p>
+</body></html>"""
+        )
+
     @app.post("/api/trust/agents", status_code=201)
     def register_agent(body: RegisterAgentIn) -> dict[str, str]:
         agent_id = svc.register_agent(
