@@ -1,0 +1,9 @@
+# Runtime deps for Render deploy (mirrors pyproject.toml [project.dependencies]).
+# Render's Python environment auto-installs requirements.txt; the pyproject is
+# the source of truth for local dev (pip install -e ".[dev]").
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pynacl>=1.5
+sqlalchemy>=2.0
+deepdiff>=8.0
