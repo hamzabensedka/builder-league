@@ -30,6 +30,9 @@ from core.decisioncore.application.services import DecisionService, make_authori
 from core.decisioncore.domain.policies import register_domain
 from core.simcore.adapters.memory import InMemoryLedgerStore, InMemorySimulationStore
 from core.simcore.application.services import SimService
+from core.towercore.adapters.memory import InMemoryNotifier, attach_notifier
+from core.towercore.application.services import TowerService
+from core.towercore.domain.gate import AgentHalted
 from core.trustcore.adapters.memory import (
     InMemoryAgentRegistry,
     InMemoryCredentialStore,
@@ -164,6 +167,15 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         audit=svc,
     )
     app.state.adaptive_service = adaptive_svc
+
+    # C5 TowerCore: the SRE layer over the fleet. Composes the SAME trust,
+    # decision, and sim service instances — the agents act on enforced state,
+    # and every intervention lands on the tower's append-only event stream.
+    tower_svc = TowerService(trust=svc, decision=decision_svc, sim=sim_svc)
+    tower_notifier = InMemoryNotifier()
+    attach_notifier(tower_svc.stream, tower_notifier)
+    app.state.tower_service = tower_svc
+    app.state.tower_notifier = tower_notifier
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -490,5 +502,122 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     @app.get("/api/adaptive/runs")
     def adaptive_list(limit: int = 50) -> dict[str, Any]:
         return {"runs": adaptive_svc.list_runs(limit=limit)}
+
+    # ---------------------------------------------------------------- C5 TowerCore
+    # The control surface: observe the fleet, approve risky actions, intervene.
+    # Telemetry pushes over SSE; interventions are REST (request + receipt).
+
+    class OperatorIn(BaseModel):
+        operator: str = Field(default="operator", min_length=1, max_length=100)
+
+    class RogueIn(BaseModel):
+        agent_id: str = Field(default="deploybot", min_length=1, max_length=50)
+
+    @app.post("/api/tower/demo")
+    def tower_demo() -> dict[str, Any]:
+        """One-click C5 seed: enroll the fleet with real signed authority."""
+        return tower_svc.seed_demo()
+
+    @app.get("/api/tower/fleet")
+    def tower_fleet() -> dict[str, Any]:
+        return {"agents": tower_svc.fleet_snapshot()}
+
+    @app.get("/api/tower/stream")
+    def tower_stream() -> Any:
+        """SSE fan-out from the event stream. One queue per client; the stream
+        stays authoritative — a dropped push is recovered by the next poll."""
+        import asyncio
+        import json
+
+        from fastapi.responses import StreamingResponse
+
+        q = tower_notifier.subscribe()
+
+        async def gen():
+            try:
+                while True:
+                    try:
+                        event = await asyncio.to_thread(q.get, True, 15.0)
+                        yield f"data: {json.dumps(event)}\n\n"
+                    except Exception:
+                        yield ": keepalive\n\n"  # comment frame keeps proxies open
+            finally:
+                tower_notifier.unsubscribe(q)
+
+        return StreamingResponse(
+            gen(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.get("/api/tower/approvals")
+    def tower_approvals() -> dict[str, Any]:
+        return {"approvals": [a.as_dict() for a in tower_svc.pending_approvals()]}
+
+    @app.post("/api/tower/approvals/{approval_id}/approve")
+    def tower_approve(approval_id: str, body: OperatorIn) -> dict[str, Any]:
+        try:
+            return tower_svc.approve(approval_id, operator=body.operator)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/tower/approvals/{approval_id}/deny")
+    def tower_deny(approval_id: str, body: OperatorIn) -> dict[str, Any]:
+        try:
+            return tower_svc.deny(approval_id, operator=body.operator)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    def _intervene(agent_id: str, body: OperatorIn, verb: str) -> dict[str, Any]:
+        try:
+            if verb == "pause":
+                return tower_svc.pause(agent_id, operator=body.operator)
+            if verb == "resume":
+                return tower_svc.resume(agent_id, operator=body.operator)
+            return tower_svc.kill(agent_id, operator=body.operator)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post("/api/tower/agents/{agent_id}/pause")
+    def tower_pause(agent_id: str, body: OperatorIn) -> dict[str, Any]:
+        return _intervene(agent_id, body, "pause")
+
+    @app.post("/api/tower/agents/{agent_id}/resume")
+    def tower_resume(agent_id: str, body: OperatorIn) -> dict[str, Any]:
+        return _intervene(agent_id, body, "resume")
+
+    @app.post("/api/tower/agents/{agent_id}/kill")
+    def tower_kill(agent_id: str, body: OperatorIn) -> dict[str, Any]:
+        return _intervene(agent_id, body, "kill")
+
+    @app.post("/api/tower/agents/{agent_id}/advance")
+    def tower_advance(agent_id: str) -> dict[str, Any]:
+        try:
+            return tower_svc.advance(agent_id)
+        except AgentHalted as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.get("/api/tower/agents/{agent_id}/replay")
+    def tower_replay(agent_id: str, n: int = 20) -> dict[str, Any]:
+        return {"agent_id": agent_id, "trace": tower_svc.replay(agent_id, n)}
+
+    @app.post("/api/tower/scenario/rogue")
+    def tower_rogue(body: RogueIn) -> dict[str, Any]:
+        try:
+            return tower_svc.inject_rogue(body.agent_id)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.get("/api/tower/audit")
+    def tower_audit() -> dict[str, Any]:
+        """Exportable audit log (bonus: compliance). Canonical events, append
+        order — the full forensic trail from enrollment to containment."""
+        return {"events": tower_svc.export_audit()}
 
     return app

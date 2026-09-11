@@ -26,7 +26,7 @@ testpaths = ["tests"]
 addopts = "-q --no-header"
 
 [tool.setuptools]
-packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "core.decisioncore", "core.decisioncore.domain", "core.decisioncore.application", "core.decisioncore.adapters", "core.adaptivecore", "core.adaptivecore.domain", "core.adaptivecore.application", "core.adaptivecore.adapters", "api", "agents"]
+packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "core.decisioncore", "core.decisioncore.domain", "core.decisioncore.application", "core.decisioncore.adapters", "core.adaptivecore", "core.adaptivecore.domain", "core.adaptivecore.application", "core.adaptivecore.adapters", "core.towercore", "core.towercore.domain", "core.towercore.application", "core.towercore.adapters", "api", "agents"]
 
 [tool.ruff]
 target-version = "py311"
@@ -210,6 +210,62 @@ forbidden_modules = [
 name = "AdaptiveCore is LLM-free: change detection and re-planning are deterministic"
 type = "forbidden"
 source_modules = ["core.adaptivecore"]
+forbidden_modules = [
+    "openai",
+    "anthropic",
+    "langchain",
+    "langfuse",
+    "litellm",
+]
+
+[[tool.importlinter.contracts]]
+name = "TowerCore domain is pure: no frameworks, no I/O libraries"
+type = "forbidden"
+source_modules = ["core.towercore.domain"]
+forbidden_modules = [
+    "fastapi",
+    "sqlalchemy",
+    "redis",
+    "requests",
+    "httpx",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "TowerCore application layer does not depend on adapters"
+type = "forbidden"
+source_modules = ["core.towercore.application"]
+forbidden_modules = [
+    "core.towercore.adapters",
+    "fastapi",
+    "sqlalchemy",
+]
+
+[[tool.importlinter.contracts]]
+name = "TowerCore layers: adapters may use application+domain, application may use domain"
+type = "layers"
+layers = [
+    "core.towercore.adapters",
+    "core.towercore.application",
+    "core.towercore.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "TowerCore reaches other cores only via application+domain public surfaces"
+type = "forbidden"
+source_modules = ["core.towercore"]
+forbidden_modules = [
+    "core.trustcore.adapters",
+    "core.decisioncore.adapters",
+    "core.simcore.adapters",
+    "core.adaptivecore.adapters",
+    "api",
+]
+
+[[tool.importlinter.contracts]]
+name = "TowerCore is LLM-free: the control plane is deterministic"
+type = "forbidden"
+source_modules = ["core.towercore"]
 forbidden_modules = [
     "openai",
     "anthropic",

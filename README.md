@@ -1,6 +1,6 @@
-# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore (C1 · C2 · C3 · C8)
+# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore (C1 · C2 · C3 · C5 · C8)
 
-One modular monolith for the DOO Builders League. Four challenges live here:
+One modular monolith for the DOO Builders League. Five challenges live here:
 
 - **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
   credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
@@ -31,10 +31,24 @@ One modular monolith for the DOO Builders League. Four challenges live here:
   plan diff. **Damping** (hysteresis, revision budget, A→B→A oscillation
   detection) contains runaway adaptation; a **non-adaptive baseline** runs the
   same world blind and fails against real enforced state. No LLM anywhere on
-  the detection/re-planning path. See
+  the   detection/re-planning path. See
   [`docs/architecture-c3.md`](docs/architecture-c3.md) ·
   [`docs/thesis-c3.md`](docs/thesis-c3.md) ·
   [`demo/script-c3.md`](demo/script-c3.md).
+- **C5 TowerCore** — the **agent control tower**: an SRE layer over the fleet.
+  One append-only **event stream** is the spine; fleet state, per-agent cost,
+  drift flags, and the audit export are all folds over it. An
+  **InterventionGate** enforces pause/kill on the execution path (kill is
+  terminal), risky actions park in an **approval queue**, and deterministic
+  **drift rules** (denial/escalation bursts, cost runaway, oscillation)
+  auto-pause a rogue agent. Telemetry pushes over SSE; interventions are
+  receipted REST calls. The **rogue-agent failure test** injects a corrupted
+  objective into DeployBot and walks injection → refusals → drift flag →
+  auto-pause → operator replay → kill, all in one exportable audit trail. No
+  LLM anywhere on the control path. See
+  [`docs/architecture-c5.md`](docs/architecture-c5.md) ·
+  [`docs/thesis-c5.md`](docs/thesis-c5.md) ·
+  [`demo/script-c5.md`](demo/script-c5.md).
 
 **Live demo:** https://builder-league-trust.onrender.com — the inspector UI is
 served at `/`; API under `/api/trust/*` (free tier: first request after idle
@@ -162,6 +176,40 @@ API: `POST /api/adaptive/demo`, `GET /api/adaptive/scenarios`,
 - **In-memory stores**: runs, revisions, and events reset on redeploy —
   swap adapters for SQLite to persist across restarts; the ports already
   isolate that change.
+
+## C5 quick drive (The Agent Control Tower)
+
+Open the UI → **C5 · Control Tower** tab:
+
+1. **Enroll the fleet** — three agents register with real signed authority and
+   start streaming events (live via SSE, polling fallback).
+2. **Step RestockBot** — check stock → size order → a real purchase, simulated
+   before write on the SimCore ledger and gated by TrustCore authority.
+3. **Step DeployBot** — release v12 has no change ticket → DecisionCore
+   escalates → the deploy **parks in the approval queue**. Approve or deny it.
+4. **Replay** any agent — the last N steps as a readable trace, seq-aligned to
+   the audit export.
+5. **Failure test** — **Inject rogue objective**: DeployBot's objective is
+   corrupted mid-run. Deny its over-authority demands; the escalation-burst
+   detector flags drift and **auto-pauses** the agent. Replay the reasoning,
+   then **Kill** (terminal). **Export audit** for the full incident trail.
+
+API: `POST /api/tower/demo`, `GET /api/tower/fleet`, `GET /api/tower/stream`
+(SSE), `GET /api/tower/approvals`, `POST /api/tower/approvals/{id}/approve|deny`,
+`POST /api/tower/agents/{id}/advance|pause|resume|kill`,
+`GET /api/tower/agents/{id}/replay?n=20`, `POST /api/tower/scenario/rogue`,
+`GET /api/tower/audit`.
+
+### Honest limits ("this breaks when…")
+
+- **In-memory event store**: the stream resets on redeploy — swap the adapter
+  for a durable log to persist across restarts; the ports already isolate that.
+- **Metered costs**: token/cost numbers are deterministic per-action estimates
+  labeled `metered_estimate`, not real provider billing.
+- **Single operator, no auth**: the cockpit is a demo surface, not an
+  enforcement boundary — enforcement lives in the gate and the cores.
+- **SSE on free-tier hosting**: first connection after idle waits on cold start;
+  the UI falls back to polling `/api/tower/fleet` if the stream drops.
 
 ## C2 quick drive (The Decision Engine)
 
