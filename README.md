@@ -1,9 +1,18 @@
-# Builder League — TrustCore (Challenge 1: The Agent That Earns Trust)
+# Builder League — TrustCore + SimCore (C1: Trust · C8: Simulate Before You Act)
 
-A trust layer for AI agents: W3C-VC-shaped **verifiable credentials** (Ed25519),
-a deterministic **policy engine** (no LLM on the enforcement path), and an
-**append-only decision receipt** for every gated action. Built as Module 1 of a
-shared core reused by all 8 Builders League challenges.
+One modular monolith for the DOO Builders League. Two challenges live here:
+
+- **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
+  credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
+  enforcement path), and an **append-only decision receipt** per gated action.
+- **C8 SimCore** — a **simulation gate** in front of a real write: fork the
+  live state, run the *same* pipeline on the fork, and show the human a
+  **computed before/after diff** (not a confirm dialog) with the **rollback
+  path** pre-computed. Post-execution invariant checks catch wrong predictions
+  and offer a real compensating rollback. See
+  [`docs/architecture-c8.md`](docs/architecture-c8.md) ·
+  [`docs/thesis-c8.md`](docs/thesis-c8.md) ·
+  [`demo/script-c8.md`](demo/script-c8.md).
 
 **Live demo:** https://builder-league-trust.onrender.com — the inspector UI is
 served at `/`; API under `/api/trust/*` (free tier: first request after idle
@@ -97,7 +106,22 @@ AI wrote implementation against failing tests (TDD) under gates
 ## Tests
 
 ```bash
-.venv/Scripts/python -m pytest        # 38 tests
+.venv/Scripts/python -m pytest        # 79 tests (C1 + C8)
 .venv/Scripts/python -m ruff check .  # lint
-.venv/Scripts/lint-imports            # architecture contracts (3 kept)
+.venv/Scripts/lint-imports            # architecture contracts (6 kept)
 ```
+
+## C8 quick drive (Simulate Before You Act)
+
+Open the UI → **C8 · Simulate first** tab:
+
+1. **Seed the demo** — funds BuyerBot with signed $1,000 authority + history.
+2. **Simulate $900 purchase** — the approval screen is the before/after diff.
+3. **Approve & execute** — real `/api/trust/decide` + ledger write.
+4. **Failure test** — simulate again, **inject a concurrent $200 hold** before
+   approving, then approve → post-check catches `900+200 > 1000` → escalated,
+   **rollback** offered and executed as a compensating refund.
+
+API: `POST /api/sim/demo`, `POST /api/sim/simulate`, `GET /api/sim/{id}`,
+`POST /api/sim/{id}/execute|reject|rollback`, `POST /api/sim/hold`,
+`GET /api/sim/ledger/state`.
