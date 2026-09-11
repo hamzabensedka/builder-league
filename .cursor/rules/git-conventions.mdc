@@ -1,0 +1,29 @@
+# Git conventions — DOO Builders League
+
+## Commit identity
+
+- ALL commits are authored by the user, never by the AI/assistant.
+- Use: `git -c user.name="hamzabensedka" -c user.email="bensedkahamza@gmail.com" commit ...`
+- Never set any AI/agent/builder name as author or committer. Never mention AI in
+  commit messages, co-author trailers, or anywhere in git metadata.
+- (README "AI usage" notes for the hackathon submission form are fine — that's a
+  stated requirement of the brief — but git history itself stays clean.)
+
+## Commits are atomic + conventional
+
+- One logical change per commit. Never mix refactor + feature + style in one commit.
+- Format: `type(scope): imperative subject` — conventional commits.
+  - types: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `build`, `chore`
+  - scope: the module (`trustcore`, `api`, `ui`, `demo`, `repo`, `deps`…)
+  - subject: lowercase, imperative, ≤72 chars, no trailing period
+- Examples: `feat(trustcore): add credential revocation re-signing`,
+  `test(api): cover forged credential submission`, `docs(repo): add thesis`
+
+## Repo hygiene
+
+- Keep only necessary files tracked: no build artifacts, no caches, no secrets,
+  no screenshots unless referenced by docs.
+- `ui/dist/` IS committed deliberately (Render deploys serve it — document why
+  in the commit that adds it). Everything else generated stays ignored.
+- Never commit: `.env`, keys, `__pycache__`, `node_modules`, `.pytest_cache`.
+- Before committing, run: ruff clean + full test suite green.
