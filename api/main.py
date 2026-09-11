@@ -180,6 +180,14 @@ def create_app(service: TrustService | None = None) -> FastAPI:
             svc.revoke_credential(credential_id=body.credential_id, reason=body.reason)
         return {"status": "revoked", "credential_id": body.credential_id}
 
+    @app.post("/api/trust/demo")
+    def run_demo() -> dict[str, Any]:
+        """One-click demo for visitors with no codebase access: runs the full
+        six-beat scenario server-side and narrates it for the UI."""
+        from core.trustcore.application.demo import run_demo_scenario
+
+        return run_demo_scenario(svc)
+
     @app.post("/api/trust/decide")
     def decide(body: DecideIn) -> dict[str, Any]:
         receipt = svc.decide(

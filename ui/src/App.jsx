@@ -5,6 +5,7 @@ const api = {
   profile: (key) =>
     fetch(`/api/trust/profile?subject_key=${encodeURIComponent(key)}`).then((r) => r.json()),
   receipts: () => fetch('/api/trust/receipts?limit=30').then((r) => r.json()),
+  runDemo: () => fetch('/api/trust/demo', { method: 'POST' }).then((r) => r.json()),
 }
 
 const shortKey = (key) => (key ? `${key.slice(0, 8)}…${key.slice(-4)}` : '')
@@ -39,7 +40,8 @@ function AgentList({ agents, selected, onPick }) {
       </p>
       {agents.length === 0 && (
         <p className="text-sm text-[var(--ink-soft)]">
-          No agents registered yet — run the demo script.
+          Nothing here yet — press <span className="font-medium text-[var(--ink)]">Run the demo</span> above
+          to watch three agents earn, lose, and abuse trust.
         </p>
       )}
       <div className="space-y-1.5">
@@ -201,6 +203,23 @@ export default function App() {
   const [profile, setProfile] = useState(null)
   const [receipts, setReceipts] = useState([])
   const [online, setOnline] = useState(true)
+  const [running, setRunning] = useState(false)
+  const [lastRun, setLastRun] = useState(null)
+
+  const runDemo = async () => {
+    setRunning(true)
+    try {
+      const result = await api.runDemo()
+      setLastRun(result)
+      await refresh()
+      // select BuyerBot so the profile panel fills in immediately
+      const a = await api.agents()
+      const buyer = a.agents.find((x) => x.public_key === result.buyer_key)
+      if (buyer) setSelected(buyer)
+    } finally {
+      setRunning(false)
+    }
+  }
 
   const refresh = useCallback(async () => {
     try {
@@ -247,11 +266,36 @@ export default function App() {
           <h1 className="serif text-4xl md:text-5xl font-medium leading-[1.05] mb-4">
             Who may this agent trust?
           </h1>
-          <p className="text-[15px] text-[var(--ink-soft)] max-w-xl leading-relaxed">
+          <p className="text-[15px] text-[var(--ink-soft)] max-w-xl leading-relaxed mb-6">
             Every agent here carries signed, verifiable credentials — authority grants,
             completed-task vouches, attestations. Decisions are enforced by cryptography
             and policy, never by a model. Each one leaves a receipt.
           </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={runDemo}
+              disabled={running}
+              className="pressable bg-[#1a1a18] text-white text-sm font-medium px-5 py-2.5 rounded-md hover:bg-[#333330] disabled:opacity-60"
+            >
+              {running ? 'Running the six beats…' : 'Run the demo'}
+            </button>
+            <span className="text-[13px] text-[var(--ink-soft)]">
+              90 seconds, server-side. Watch the receipts appear on the right.
+            </span>
+          </div>
+          {lastRun && (
+            <ol className="mt-6 space-y-1.5 fade-up">
+              {lastRun.beats.map((b, i) => (
+                <li key={i} className="text-[13px] flex items-baseline gap-2.5">
+                  <span className="mono text-[10px] text-[var(--ink-soft)] shrink-0">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className="text-[var(--ink)]">{b.label}</span>
+                  {b.decision && <Badge kind={b.decision}>{b.decision}</Badge>}
+                </li>
+              ))}
+            </ol>
+          )}
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
