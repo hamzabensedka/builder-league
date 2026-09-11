@@ -1,10 +1,20 @@
-# Builder League — TrustCore + SimCore (C1: Trust · C8: Simulate Before You Act)
+# Builder League — TrustCore + DecisionCore + SimCore (C1 · C2 · C8)
 
-One modular monolith for the DOO Builders League. Two challenges live here:
+One modular monolith for the DOO Builders League. Three challenges live here:
 
 - **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
   credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
   enforcement path), and an **append-only decision receipt** per gated action.
+- **C2 DecisionCore** — a **decision layer** that takes a proposed action +
+  context and returns **execute · ask · defer · escalate · refuse**, with
+  confidence, risk, evidence used, missing information, and reversibility all
+  computed from five **named, weighted signals**. It composes TrustCore
+  (authority evidence) and SimCore (reversibility) and receipts every decision
+  to the shared append-only log. **No LLM anywhere** — enforced by an
+  import-linter contract. See
+  [`docs/architecture-c2.md`](docs/architecture-c2.md) ·
+  [`docs/thesis-c2.md`](docs/thesis-c2.md) ·
+  [`demo/script-c2.md`](demo/script-c2.md).
 - **C8 SimCore** — a **simulation gate** in front of a real write: fork the
   live state, run the *same* pipeline on the fork, and show the human a
   **computed before/after diff** (not a confirm dialog) with the **rollback
@@ -106,10 +116,39 @@ AI wrote implementation against failing tests (TDD) under gates
 ## Tests
 
 ```bash
-.venv/Scripts/python -m pytest        # 79 tests (C1 + C8)
+.venv/Scripts/python -m pytest        # full suite (C1 + C2 + C8)
 .venv/Scripts/python -m ruff check .  # lint
-.venv/Scripts/lint-imports            # architecture contracts (6 kept)
+.venv/Scripts/lint-imports            # architecture contracts (11 kept)
 ```
+
+## C2 quick drive (The Decision Engine)
+
+Open the UI → **C2 · Decision Engine** tab:
+
+1. **Seed the demo** — three agents with real signed authority + history.
+2. **Refund domain** — "Clean $120 refund" → **EXECUTE** (confidence/risk bars
+   + the five weighted signals rendered). Then "$2400 refund, missing
+   invoice_id" → **ASK**, naming the missing field.
+3. **Deploy domain** — "$8000 deploy, fully evidenced" → **ESCALATE**
+   (irreversible + over threshold). Then the **failure test**: "$8000 deploy,
+   missing change_ticket" — full authority + strong history, but the engine
+   **never executes**; it asks/escalates and names `change_ticket`.
+
+API: `POST /api/decision/demo`, `GET /api/decision/domains`,
+`POST /api/decision/decide`, `GET /api/decision/decisions`,
+`GET /api/decision/{id}`.
+
+### Honest limits ("this breaks when…")
+
+- **Threshold gaming**: an actor who learns a domain's cost threshold can
+  split one large action into several under-threshold ones. Mitigation
+  (rate/window aggregation in the history signal) is noted, not built.
+- **Self-reported evidence**: context fields like `tests_passing: true` are
+  supplied by the actor and weighted, but not verified against a real CI
+  system in this build — the port exists; the adapter is synthetic.
+- **TOCTOU staleness**: the history signal reads the receipt log at decision
+  time; a burst of concurrent proposals can interleave. C8's failure test
+  demonstrates this class on the shared budget.
 
 ## C8 quick drive (Simulate Before You Act)
 
