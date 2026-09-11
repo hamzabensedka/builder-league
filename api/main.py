@@ -13,6 +13,8 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from core.decisioncore.adapters.memory import InMemoryDecisionStore
+from core.decisioncore.application.services import DecisionService, make_authority_probe
 from core.simcore.adapters.memory import InMemoryLedgerStore, InMemorySimulationStore
 from core.simcore.application.services import SimService
 from core.trustcore.adapters.memory import (
@@ -106,6 +108,27 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         limit=SIM_LIMIT,
     )
     app.state.sim_service = sim_svc
+
+    # C2 DecisionCore shares the same TrustService: authority evidence is the
+    # REAL signature/scope verification, and the audit trail is the SAME
+    # append-only receipt log. The authority probe forks trust state (C8
+    # pattern) so a decision's authority check never pollutes live history.
+    def _trust_factory():
+        return (
+            InMemoryAgentRegistry(),
+            InMemoryCredentialStore(),
+            InMemoryReceiptLog(),
+            SystemClock(),
+        )
+
+    decision_svc = DecisionService(
+        authority=svc,
+        history=svc,
+        decisions=InMemoryDecisionStore(),
+        audit=svc,
+        authority_probe=make_authority_probe(svc, _trust_factory),
+    )
+    app.state.decision_service = decision_svc
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -319,5 +342,53 @@ def create_app(service: TrustService | None = None) -> FastAPI:
             "projected_balance": ledger.projected_balance(),
             "limit": SIM_LIMIT,
         }
+
+    # ------------------------------------------------------------ C2 DecisionCore
+    # The decision is computed from signals — no prompt box, no LLM.
+
+    class DecideActionIn(BaseModel):
+        domain: str = Field(min_length=1, max_length=50)
+        action: str = Field(min_length=1, max_length=100)
+        actor_key: str = Field(min_length=1)
+        amount: float | None = Field(default=None, ge=0)
+        context: dict[str, Any] = Field(default_factory=dict)
+
+    @app.post("/api/decision/demo")
+    def decision_demo() -> dict[str, Any]:
+        """One-click C2 demo seed: three agents with real signed authority +
+        history across the refund/deploy/moderation domains."""
+        from core.decisioncore.application.demo import run_decision_demo
+
+        return run_decision_demo(svc)
+
+    @app.get("/api/decision/domains")
+    def decision_domains() -> dict[str, Any]:
+        return {"domains": decision_svc.list_domains()}
+
+    @app.post("/api/decision/decide")
+    def decision_decide(body: DecideActionIn) -> dict[str, Any]:
+        try:
+            return decision_svc.decide(
+                domain=body.domain,
+                action=body.action,
+                actor_key=body.actor_key,
+                amount=body.amount,
+                context=body.context,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/decision/decisions")
+    def decision_list(limit: int = 50) -> dict[str, Any]:
+        return {"decisions": decision_svc.list(limit=limit)}
+
+    @app.get("/api/decision/{decision_id}")
+    def decision_get(decision_id: str) -> dict[str, Any]:
+        record = decision_svc.get(decision_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="unknown decision")
+        return record
 
     return app

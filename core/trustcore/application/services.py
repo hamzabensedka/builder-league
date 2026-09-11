@@ -118,6 +118,11 @@ class TrustService:
     def list_agents(self) -> list[dict[str, Any]]:
         return self._registry.list_agents()
 
+    def find_agent_id(self, public_key: str) -> str | None:
+        """Public lookup used by DecisionCore's history signal to match an
+        actor's decision receipts (receipts store agent_id, not the key)."""
+        return self._registry.find_by_key(public_key)
+
     # --- the trust-gated decision -------------------------------------------
 
     def decide(

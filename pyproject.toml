@@ -26,7 +26,7 @@ testpaths = ["tests"]
 addopts = "-q --no-header"
 
 [tool.setuptools]
-packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "api", "agents"]
+packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "core.decisioncore", "core.decisioncore.domain", "core.decisioncore.application", "core.decisioncore.adapters", "api", "agents"]
 
 [tool.ruff]
 target-version = "py311"
@@ -107,4 +107,58 @@ layers = [
     "core.simcore.adapters",
     "core.simcore.application",
     "core.simcore.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "DecisionCore domain is pure: no frameworks, no I/O libraries"
+type = "forbidden"
+source_modules = ["core.decisioncore.domain"]
+forbidden_modules = [
+    "fastapi",
+    "sqlalchemy",
+    "redis",
+    "requests",
+    "httpx",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "DecisionCore application layer does not depend on its own adapters"
+type = "forbidden"
+source_modules = ["core.decisioncore.application"]
+forbidden_modules = [
+    "core.decisioncore.adapters",
+    "fastapi",
+    "sqlalchemy",
+]
+
+[[tool.importlinter.contracts]]
+name = "DecisionCore layers: adapters may use application+domain, application may use domain"
+type = "layers"
+layers = [
+    "core.decisioncore.adapters",
+    "core.decisioncore.application",
+    "core.decisioncore.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "DecisionCore reaches TrustCore/SimCore only via application+domain public surfaces"
+type = "forbidden"
+source_modules = ["core.decisioncore"]
+forbidden_modules = [
+    "core.trustcore.adapters",
+    "core.simcore.adapters",
+    "api",
+]
+
+[[tool.importlinter.contracts]]
+name = "DecisionCore is LLM-free: no model or tracing imports anywhere on the decision path"
+type = "forbidden"
+source_modules = ["core.decisioncore"]
+forbidden_modules = [
+    "openai",
+    "anthropic",
+    "langchain",
+    "langfuse",
+    "litellm",
 ]
