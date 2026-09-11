@@ -5,7 +5,10 @@ a deterministic **policy engine** (no LLM on the enforcement path), and an
 **append-only decision receipt** for every gated action. Built as Module 1 of a
 shared core reused by all 8 Builders League challenges.
 
-**Live demo:** `<demo URL goes here after Render deploy>`
+**Live demo:** https://builder-league-trust.onrender.com — API live (free tier:
+first request after idle takes ~30–60s to wake; `/health` answers `{"status":"ok"}`).
+Run the demo against it:
+`PYTHONPATH=. .venv/Scripts/python demo/run_demo.py --base https://builder-league-trust.onrender.com`
 **Architecture:** [`docs/architecture.md`](docs/architecture.md)
 **Two-year thesis:** [`docs/thesis.md`](docs/thesis.md)
 

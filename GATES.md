@@ -70,4 +70,9 @@ Scope: implement the approved plan — TrustCore (hexagonal: domain/application/
 - [x] B12: Full test suite green from clean state; ruff clean; all prior gates still pass
   CHECK: .venv\Scripts\python.exe -m pytest
   EXPECT: /passed/
-  EVIDENCE: -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | 38 passed, 2 warnings in 3.08s
+  EVIDENCE: 38 passed, 2 warnings in 3.08s
+
+- [x] B13: Live demo URL responds: Render service health endpoint returns ok over HTTPS
+  CHECK: node -e "fetch('https://builder-league-trust.onrender.com/health').then(r=>r.json()).then(j=>{console.log(JSON.stringify(j));process.exit(j.status==='ok'?0:1)}).catch(e=>{console.log('ERR '+e.message);process.exit(1)})"
+  EXPECT: "status":"ok"
+  EVIDENCE: {"status":"ok"}
