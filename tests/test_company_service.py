@@ -50,7 +50,8 @@ def test_advance_day_moves_numbers():
 def test_replay_day_returns_earlier_state():
     svc = _stack()
     svc.seed_demo("normal")
-    svc.advance_day(); svc.advance_day()
+    svc.advance_day()
+    svc.advance_day()
     day1 = svc.replay(1)
     day2 = svc.replay(2)
     assert day1["cash"] != day2["cash"] or day1["inventory"] != day2["inventory"]

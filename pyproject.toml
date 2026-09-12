@@ -26,7 +26,7 @@ testpaths = ["tests"]
 addopts = "-q --no-header"
 
 [tool.setuptools]
-packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "core.decisioncore", "core.decisioncore.domain", "core.decisioncore.application", "core.decisioncore.adapters", "core.adaptivecore", "core.adaptivecore.domain", "core.adaptivecore.application", "core.adaptivecore.adapters", "core.towercore", "core.towercore.domain", "core.towercore.application", "core.towercore.adapters", "core.memorycore", "core.memorycore.domain", "core.memorycore.application", "core.memorycore.adapters", "api", "agents"]
+packages = ["core", "core.trustcore", "core.trustcore.domain", "core.trustcore.application", "core.trustcore.adapters", "core.simcore", "core.simcore.domain", "core.simcore.application", "core.simcore.adapters", "core.decisioncore", "core.decisioncore.domain", "core.decisioncore.application", "core.decisioncore.adapters", "core.adaptivecore", "core.adaptivecore.domain", "core.adaptivecore.application", "core.adaptivecore.adapters", "core.towercore", "core.towercore.domain", "core.towercore.application", "core.towercore.adapters", "core.memorycore", "core.memorycore.domain", "core.memorycore.application", "core.memorycore.adapters", "core.companycore", "core.companycore.domain", "core.companycore.application", "core.companycore.adapters", "api", "agents"]
 
 [tool.ruff]
 target-version = "py311"
@@ -323,6 +323,65 @@ forbidden_modules = [
 name = "MemoryCore is LLM-free: confidence, decay, and forgetting are deterministic"
 type = "forbidden"
 source_modules = ["core.memorycore"]
+forbidden_modules = [
+    "openai",
+    "anthropic",
+    "langchain",
+    "langfuse",
+    "litellm",
+]
+
+[[tool.importlinter.contracts]]
+name = "CompanyCore domain is pure: no frameworks, no I/O libraries"
+type = "forbidden"
+source_modules = ["core.companycore.domain"]
+forbidden_modules = [
+    "fastapi",
+    "sqlalchemy",
+    "redis",
+    "requests",
+    "httpx",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "CompanyCore application layer does not depend on adapters"
+type = "forbidden"
+source_modules = ["core.companycore.application"]
+forbidden_modules = [
+    "core.companycore.adapters",
+    "fastapi",
+    "sqlalchemy",
+    "httpx",
+]
+
+[[tool.importlinter.contracts]]
+name = "CompanyCore layers: adapters may use application+domain, application may use domain"
+type = "layers"
+layers = [
+    "core.companycore.adapters",
+    "core.companycore.application",
+    "core.companycore.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "CompanyCore reaches other cores only via application+domain public surfaces"
+type = "forbidden"
+source_modules = ["core.companycore"]
+forbidden_modules = [
+    "core.trustcore.adapters",
+    "core.decisioncore.adapters",
+    "core.simcore.adapters",
+    "core.adaptivecore.adapters",
+    "core.towercore.adapters",
+    "core.memorycore.adapters",
+    "api",
+]
+
+[[tool.importlinter.contracts]]
+name = "CompanyCore LLM is adapter-only: enforcement and domain are model-free"
+type = "forbidden"
+source_modules = ["core.companycore.domain", "core.companycore.application"]
 forbidden_modules = [
     "openai",
     "anthropic",

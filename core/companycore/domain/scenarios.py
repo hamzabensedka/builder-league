@@ -1,13 +1,13 @@
 """Seeded world generators. Deterministic: same seed -> same week."""
 
-import random
+import random  # noqa: S311 — seeded demo RNG, not crypto
 from typing import Any
 
 CUSTOMERS = ["Acme", "Globex", "Initech", "Umbrella", "Hooli", "Stark"]
 
 
 def _week(seed: int, crunch_day: int | None) -> list[dict[str, Any]]:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311 — deterministic demo data, not security
     days: list[dict[str, Any]] = []
     for d in range(7):
         leads = []

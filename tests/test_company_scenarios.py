@@ -30,8 +30,10 @@ def _svc():
 def test_cash_crunch_self_corrects_without_human():
     svc = _svc()
     svc.seed_demo("cash_crunch")
-    svc.advance_day(); svc.advance_day()  # day 2: churn + early bill
-    svc.advance_day(); svc.advance_day()
+    svc.advance_day()
+    svc.advance_day()  # day 2: churn + early bill
+    svc.advance_day()
+    svc.advance_day()
     after = svc.kpis()
     kinds = [e["kind"] for e in svc.events()]
     assert "spend_frozen" in kinds

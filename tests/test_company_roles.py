@@ -43,7 +43,7 @@ def test_finance_collects_due_ar_and_freezes_on_low_runway():
                    payload={"invoice_id": "I1", "deal_id": "D1", "customer": "Acme",
                             "amount": 1000, "due_day": 0}),
         make_event(day=0, seq=1, actor="financebot", kind="bill_paid",
-                   payload={"bill_id": "B0", "amount": 49900}),  # cash now -48900 -> runway negative
+                   payload={"bill_id": "B0", "amount": 49900}),  # cash -> runway negative
     ]
     ctx = _ctx(events, day=0)
     intents = finance_step(ctx)
@@ -55,7 +55,8 @@ def test_finance_collects_due_ar_and_freezes_on_low_runway():
 def test_finance_pays_due_bill_unless_frozen():
     events = [
         make_event(day=0, seq=0, actor="opsbot", kind="bill_received",
-                   payload={"bill_id": "B1", "supplier": "SouthSupply", "amount": 500, "due_day": 0}),
+                   payload={"bill_id": "B1", "supplier": "SouthSupply",
+                            "amount": 500, "due_day": 0}),
         make_event(day=0, seq=1, actor="financebot", kind="invoice_collected",
                    payload={"invoice_id": "I0", "amount": 50000}),
     ]

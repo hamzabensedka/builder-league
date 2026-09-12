@@ -32,7 +32,7 @@ def sales_step(ctx: RoleContext) -> list[dict[str, Any]]:
     ]
     if not open_leads:
         return []
-    lead = max(open_leads, key=lambda l: l.get("value", 0))
+    lead = max(open_leads, key=lambda lead_item: lead_item.get("value", 0))
     amount = round(float(lead.get("units", 0)) * UNIT_COST * MARGIN, 2)
     return [{
         "action": "quote",

@@ -71,10 +71,12 @@ class CompanyService:
             self._emit("world", "lead_arrived", churn)
             self._emit("world", "deal_lost", {"lead_id": churn["lead_id"],
                                               "reason": churn.get("reason", "churned")})
-            beats.append({"label": f"{churn['customer']} churned (${churn['value']} pipeline lost)"})
+            beats.append({"label": f"{churn['customer']} churned "
+                                   f"(${churn['value']} pipeline lost)"})
         if schedule.get("early_bill"):
             self._emit("world", "bill_received", schedule["early_bill"])
-            beats.append({"label": f"early supplier bill ${schedule['early_bill']['amount']} landed"})
+            beats.append({"label": "early supplier bill "
+                                   f"${schedule['early_bill']['amount']} landed"})
         # the churn shock also wipes cash (the lost customer had prepaid)
         for churn in schedule.get("churn", []):
             if churn.get("cash_hit"):
@@ -112,7 +114,8 @@ class CompanyService:
         # collections/payments so a post-collection cash crunch still freezes.
         if role == "financebot":
             k2 = fold_kpis(self._events.all(), current_day=self._day, daily_burn=DAILY_BURN)
-            if k2["runway_days"] < RUNWAY_FREEZE and not fold_state(self._events.all()).spend_frozen:
+            frozen = fold_state(self._events.all()).spend_frozen
+            if k2["runway_days"] < RUNWAY_FREEZE and not frozen:
                 self._emit(role, "spend_frozen", {"runway_days": k2["runway_days"],
                                                   "reason": "post-collection runway breach"})
                 beats.append({"label": f"financebot: runway {k2['runway_days']}d — spend frozen",

@@ -28,7 +28,8 @@ def test_advance_moves_kpis():
 def test_replay_and_events():
     c = _client()
     c.post("/api/company/demo", json={"scenario": "normal"})
-    c.post("/api/company/advance"); c.post("/api/company/advance")
+    c.post("/api/company/advance")
+    c.post("/api/company/advance")
     r = c.get("/api/company/replay?day=1")
     assert r.status_code == 200
     ev = c.get("/api/company/events").json()

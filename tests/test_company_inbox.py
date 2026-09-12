@@ -25,13 +25,18 @@ def test_inbox_unknown_and_double_resolve():
 
 
 def test_parse_valid_directive():
-    d = parse_directive('Here is my call: {"action":"freeze_spend","target":"discretionary","amount_cap":null,"rationale":"runway 18 days"}')
+    d = parse_directive(
+        'Here is my call: {"action":"freeze_spend","target":"discretionary",'
+        '"amount_cap":null,"rationale":"runway 18 days"}'
+    )
     assert d.action == "freeze_spend"
     assert d.rationale == "runway 18 days"
 
 
 def test_parse_rejects_unknown_action():
-    d = parse_directive('{"action":"launch_rocket","target":"moon","amount_cap":null,"rationale":"x"}')
+    d = parse_directive(
+        '{"action":"launch_rocket","target":"moon","amount_cap":null,"rationale":"x"}'
+    )
     assert d.action == "none"
     assert "unparseable" in d.rationale or "unknown" in d.rationale
 

@@ -214,8 +214,10 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     from core.companycore.adapters.llm import OpenRouterChief
     from core.companycore.adapters.memory import (
         InMemoryEventStore,
-        ManualClock as CompanyClock,
         ScriptedLLM,
+    )
+    from core.companycore.adapters.memory import (
+        ManualClock as CompanyClock,
     )
     from core.companycore.application.services import CompanyService
 
