@@ -303,3 +303,44 @@ Open the UI → **C8 · Simulate first** tab:
 API: `POST /api/sim/demo`, `POST /api/sim/simulate`, `GET /api/sim/{id}`,
 `POST /api/sim/{id}/execute|reject|rollback`, `POST /api/sim/hold`,
 `GET /api/sim/ledger/state`.
+
+## C6 quick drive (The Autonomous Company Simulator)
+
+Open the UI → **C6 · Company** tab:
+
+1. **Seed Northwind Components** — four roles (Sales, Ops, Finance, and an
+   LLM **ChiefOfStaff**) enroll with signed, scoped authority; opening books
+   land: $50k cash, 200 units, 2 invoices, 1 bill.
+2. **Run a day** — the company operates: leads arrive, SalesBot quotes and
+   wins (invoice issued), OpsBot restocks, FinanceBot collects and pays.
+   Revenue, cash, runway, backlog, and churn all move. Borderline actions park
+   in the **human inbox** — answer one inline (the human-in-the-loop moment).
+3. **⚡ Cash crunch** — a churn + early-bill shock drops runway; the company
+   **self-corrects with zero human input**: Finance freezes spend, Ops defers
+   the restock, Sales pushes collections, the ChiefOfStaff ratifies.
+4. **☠ Rogue sales** (failure test) — SalesBot over-discounts past its signed
+   scope → TrustCore refuses → refusal streak → `role_paused`; Ops/Finance
+   hold the line. Replay the reasoning on the timeline.
+5. **Replay scrubber** — drag to any earlier day; the whole board re-folds
+   from the event log.
+
+API: `POST /api/company/demo`, `POST /api/company/advance`,
+`GET /api/company/state`, `GET /api/company/kpis`, `GET /api/company/inbox`,
+`POST /api/company/inbox/{id}/resolve`, `GET /api/company/replay?day=N`,
+`GET /api/company/events`, `POST /api/company/scenario/cash-crunch`,
+`POST /api/company/scenario/rogue-sales`.
+
+### Honest limits ("this breaks when…")
+
+- **In-memory spine**: the company event log resets on redeploy — swap the
+  adapter for a durable log to persist; the ports isolate that change.
+- **Sales/Ops/Finance are deterministic policies**, not LLMs — stated plainly;
+  the LLM is the ChiefOfStaff (the cross-functional judgment role), and it is
+  **propose-only**: its output is parsed by deterministic domain code before
+  any state change, so it can never act outside the envelope.
+- **OpenRouter free tier is rate-limited**; with no `OPENROUTER_API_KEY` (or on
+  any error) the ChiefOfStaff falls back to a scripted policy and the UI labels
+  which brain answered. Clean clones run fully offline.
+- **Single operator, no auth** on the inbox (demo surface, not enforcement) —
+  enforcement lives in TrustCore/DecisionCore, not the UI.
+
