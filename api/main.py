@@ -206,6 +206,29 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     # never returned by any endpoint
     app.state.memory_demo_keys = {}
 
+    # C6 CompanyCore: the autonomous company. Four roles act on ONE shared
+    # event-sourced record; every action is gated by the SAME TrustService and
+    # DecisionService instances the other cores use. The ChiefOfStaff is the
+    # only LLM-touched role — propose-only, parsed by deterministic domain
+    # code, with a scripted fallback so clean clones run offline.
+    from core.companycore.adapters.llm import OpenRouterChief
+    from core.companycore.adapters.memory import (
+        InMemoryEventStore,
+        ManualClock as CompanyClock,
+        ScriptedLLM,
+    )
+    from core.companycore.application.services import CompanyService
+
+    company_svc = CompanyService(
+        events=InMemoryEventStore(),
+        clock=CompanyClock(),
+        llm=OpenRouterChief(fallback=ScriptedLLM()),
+        trust=svc,
+        decision=decision_svc,
+        memory=memory_svc,
+    )
+    app.state.company_service = company_svc
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -771,5 +794,63 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     @app.get("/api/memory/events")
     def memory_events(limit: int = 100) -> dict[str, Any]:
         return memory_svc.list_events(limit=limit)
+
+    # ------------------------------------------------------------- C6 CompanyCore
+    # The run-the-week loop. Roles propose on one shared record; cores enforce;
+    # the human inbox catches what shouldn't auto-execute.
+
+    class CompanyDemoIn(BaseModel):
+        scenario: Literal["normal", "cash_crunch"] = "normal"
+
+    class ResolveIn(BaseModel):
+        resolution: str = Field(min_length=1, max_length=500)
+
+    @app.post("/api/company/demo")
+    def company_demo(body: CompanyDemoIn) -> dict[str, Any]:
+        """One-click C6 seed: Northwind Components, four roles, opening books."""
+        return company_svc.seed_demo(body.scenario)
+
+    @app.post("/api/company/advance")
+    def company_advance() -> dict[str, Any]:
+        try:
+            return company_svc.advance_day()
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/company/state")
+    def company_state() -> dict[str, Any]:
+        return company_svc.state()
+
+    @app.get("/api/company/kpis")
+    def company_kpis() -> dict[str, Any]:
+        return company_svc.kpis()
+
+    @app.get("/api/company/inbox")
+    def company_inbox() -> dict[str, Any]:
+        return {"inbox": company_svc.inbox()}
+
+    @app.post("/api/company/inbox/{escalation_id}/resolve")
+    def company_resolve(escalation_id: str, body: ResolveIn) -> dict[str, Any]:
+        try:
+            return company_svc.resolve_inbox(escalation_id, body.resolution)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.get("/api/company/replay")
+    def company_replay(day: int = 0) -> dict[str, Any]:
+        return company_svc.replay(day)
+
+    @app.get("/api/company/events")
+    def company_events() -> dict[str, Any]:
+        return {"events": company_svc.events()}
+
+    @app.post("/api/company/scenario/cash-crunch")
+    def company_cash_crunch() -> dict[str, Any]:
+        return company_svc.run_cash_crunch()
+
+    @app.post("/api/company/scenario/rogue-sales")
+    def company_rogue_sales() -> dict[str, Any]:
+        return company_svc.inject_rogue_sales()
 
     return app
