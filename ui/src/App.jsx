@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import AdaptiveRun from './adaptive/AdaptiveRun'
+import Company from './company/Company'
 import DecisionConsole from './decision/DecisionConsole'
 import Memory from './memory/Memory'
 import SimGate from './sim/SimGate'
@@ -312,6 +313,7 @@ export default function App() {
               ['adaptive', 'C3 · Adaptive Agent'],
               ['tower', 'C5 · Control Tower'],
               ['memory', 'C4 · Memory'],
+              ['company', 'C6 · Company'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -339,6 +341,7 @@ export default function App() {
         {tab === 'adaptive' && <AdaptiveRun />}
         {tab === 'tower' && <Tower />}
         {tab === 'memory' && <Memory />}
+        {tab === 'company' && <Company />}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
           <span className="mono">TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore · Builders League, C1, C2, C3, C4, C5 &amp; C8</span>
