@@ -1,6 +1,6 @@
-# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore (C1 · C2 · C3 · C4 · C5 · C8)
+# Builder League — TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore + AmbientCore (C1 · C2 · C3 · C4 · C5 · C7 · C8)
 
-One modular monolith for the DOO Builders League. Six challenges live here:
+One modular monolith for the DOO Builders League. Seven challenges live here:
 
 - **C1 TrustCore** — a trust layer for AI agents: W3C-VC-shaped **verifiable
   credentials** (Ed25519), a deterministic **policy engine** (no LLM on the
@@ -64,6 +64,21 @@ One modular monolith for the DOO Builders League. Six challenges live here:
   [`docs/architecture-c4.md`](docs/architecture-c4.md) ·
   [`docs/thesis-c4.md`](docs/thesis-c4.md) ·
   [`demo/script-c4.md`](demo/script-c4.md).
+- **C7 AmbientCore** — **beyond the chatbot**: an ambient canvas for the ops
+  operator on shift. Nothing renders by default — no KPI wall, no feed, no
+  prompt box. A deterministic **intent fold** over the TowerCore event stream
+  infers what you need to decide next and surfaces at most **one decision
+  card**: evidence chain attached, the risky action **pre-simulated** through
+  SimCore with a rollback preview, initiated by the interface itself. Wrong
+  guess? Reject it: a receipted MemoryCore correction **demotes** that intent
+  kind on the retry, and a second rejection degrades gracefully to raw
+  evidence. The dogfood contrast is live: the **"⇄ What this replaces"**
+  toggle shows the SAME fleet as the C5 dashboard vs the ambient canvas.
+  Narration is propose-only LLM with scripted fallback; inference and
+  enforcement are model-free. See
+  [`docs/architecture-c7.md`](docs/architecture-c7.md) ·
+  [`docs/thesis-c7.md`](docs/thesis-c7.md) ·
+  [`demo/script-c7.md`](demo/script-c7.md).
 
 **Live demo:** https://builder-league-trust.onrender.com — the inspector UI is
 served at `/`; API under `/api/trust/*` (free tier: first request after idle
@@ -303,6 +318,45 @@ Open the UI → **C8 · Simulate first** tab:
 API: `POST /api/sim/demo`, `POST /api/sim/simulate`, `GET /api/sim/{id}`,
 `POST /api/sim/{id}/execute|reject|rollback`, `POST /api/sim/hold`,
 `GET /api/sim/ledger/state`.
+
+## C7 quick drive (Beyond the Chatbot)
+
+Open the UI → **C7 · Canvas** tab:
+
+1. **Start the shift** — the canvas binds to the live fleet. Nothing renders:
+   no dashboard, no prompt box. The ambient line reads *"Fleet steady."*
+2. **Step RestockBot** — a low-stock signal folds in but stays below
+   threshold: see it in *"Inferred, but deliberately not shown."*
+3. **Step DeployBot ×3** — v12 has no change ticket → DecisionCore escalates
+   → the action parks → **the interface initiates the decision card itself**:
+   evidence chain, pre-simulated before/after diff, rollback preview.
+   **Approve & execute** — the real tower approval resolves.
+4. **Failure test** — step DeployBot to the next review card, **reject** it
+   ("Not the right call"): a receipted correction lands in MemoryCore. Resume
+   + step again: the same card kind returns **visibly demoted** (confidence
+   halved, correction cited). Reject twice and the canvas stops guessing —
+   manual mode hands over the raw events.
+5. **⇄ What this replaces** — one click to the C5 Tower tab: the SAME fleet
+   as a monitoring dashboard. That contrast is the thesis.
+
+API: `POST /api/ambient/demo`, `GET /api/ambient/canvas`,
+`GET /api/ambient/intents`, `GET /api/ambient/cards`,
+`POST /api/ambient/cards/{id}/approve|edit|reject`.
+
+### Honest limits ("this breaks when…")
+
+- **The fold is rule-based, not learned**: intent kinds and weights are named
+  constants. Deliberate — the graded substance is that inference is real
+  (folded from event shapes, demoted by corrections), inspectable, and
+  model-free. A learned ranker would slot in behind the same `fold → rank`
+  seam.
+- **One fleet, one operator**: no multi-tenant auth on the canvas (a demo
+  surface); enforcement lives in the cores, not the UI.
+- **In-memory card store**: card history resets on redeploy — swap the
+  adapter for a durable store; the port isolates that change.
+- **Narrator is OpenRouter free-tier**; with no `OPENROUTER_API_KEY` (or on
+  any error) the rationale falls back to scripted lines and the card labels
+  which brain answered. Clean clones run fully offline.
 
 ## C6 quick drive (The Autonomous Company Simulator)
 
