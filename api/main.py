@@ -231,6 +231,30 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     )
     app.state.company_service = company_svc
 
+    # C7 AmbientCore: the ambient canvas. Watches the SAME tower fleet through
+    # public surfaces; the narrator is the only LLM seam (propose-only,
+    # scripted fallback); inference and enforcement stay model-free.
+    from core.ambientcore.adapters.llm import OpenRouterNarrator
+    from core.ambientcore.adapters.memory import (
+        InMemoryCardStore,
+        ManualClock as AmbientClock,
+    )
+    from core.ambientcore.adapters.memory import (
+        ScriptedNarrator,
+    )
+    from core.ambientcore.application.services import AmbientService
+
+    ambient_svc = AmbientService(
+        tower=tower_svc,
+        sim=sim_svc,
+        memory=memory_svc,
+        trust=svc,
+        cards=InMemoryCardStore(),
+        clock=AmbientClock(),
+        narrator=OpenRouterNarrator(fallback=ScriptedNarrator()),
+    )
+    app.state.ambient_service = ambient_svc
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -854,5 +878,70 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     @app.post("/api/company/scenario/rogue-sales")
     def company_rogue_sales() -> dict[str, Any]:
         return company_svc.inject_rogue_sales()
+
+    # ------------------------------------------------------------- C7 AmbientCore
+    # The ambient canvas: no text input, no dashboard. The canvas snapshot is
+    # ambient state + at most ONE decision card. Card verbs are receipted REST.
+
+    class AmbientOperatorIn(BaseModel):
+        operator: str = Field(default="operator", min_length=1, max_length=100)
+
+    class AmbientRejectIn(BaseModel):
+        operator: str = Field(default="operator", min_length=1, max_length=100)
+        note: str = Field(min_length=1, max_length=300)
+
+    class AmbientEditIn(BaseModel):
+        operator: str = Field(default="operator", min_length=1, max_length=100)
+        new_action: dict[str, Any]
+
+    @app.post("/api/ambient/demo")
+    def ambient_demo() -> dict[str, Any]:
+        """One-click C7 seed: bind the canvas to the live tower fleet (seeding
+        the fleet first if needed). The canvas watches; it never asks."""
+        return ambient_svc.seed_demo()
+
+    @app.get("/api/ambient/canvas")
+    def ambient_canvas() -> dict[str, Any]:
+        try:
+            return ambient_svc.canvas()
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/ambient/intents")
+    def ambient_intents() -> dict[str, Any]:
+        """The runner-ups the interface chose NOT to show — proof it decides."""
+        try:
+            return ambient_svc.intents()
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/ambient/cards")
+    def ambient_cards() -> dict[str, Any]:
+        return ambient_svc.cards()
+
+    @app.post("/api/ambient/cards/{card_id}/approve")
+    def ambient_approve(card_id: str, body: AmbientOperatorIn) -> dict[str, Any]:
+        try:
+            return ambient_svc.approve(card_id, operator=body.operator)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/ambient/cards/{card_id}/edit")
+    def ambient_edit(card_id: str, body: AmbientEditIn) -> dict[str, Any]:
+        try:
+            return ambient_svc.edit(card_id, operator=body.operator,
+                                    new_action=body.new_action)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+
+    @app.post("/api/ambient/cards/{card_id}/reject")
+    def ambient_reject(card_id: str, body: AmbientRejectIn) -> dict[str, Any]:
+        try:
+            return ambient_svc.reject(card_id, operator=body.operator, note=body.note)
+        except ValueError as exc:
+            status = 404 if "unknown" in str(exc) else 409
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
 
     return app
