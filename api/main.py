@@ -237,10 +237,10 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     from core.ambientcore.adapters.llm import OpenRouterNarrator
     from core.ambientcore.adapters.memory import (
         InMemoryCardStore,
-        ManualClock as AmbientClock,
+        ScriptedNarrator,
     )
     from core.ambientcore.adapters.memory import (
-        ScriptedNarrator,
+        ManualClock as AmbientClock,
     )
     from core.ambientcore.application.services import AmbientService
 

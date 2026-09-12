@@ -73,10 +73,6 @@ def fold_intents(
     # --- deploy_needs_review: a parked approval is a decision waiting ---------
     for agent_id, evs in sorted(by_agent.items()):
         requested = [e for e in evs if e.kind == "approval_requested"]
-        resolved_ids = {
-            e.payload.get("approval_id")
-            for e in evs if e.kind == "approval_resolved"
-        }
         resolved_actions = {
             e.payload.get("action")
             for e in evs if e.kind == "approval_resolved"

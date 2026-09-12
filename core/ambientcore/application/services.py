@@ -195,10 +195,10 @@ class AmbientService:
                 self._tower.pause(target, operator=card.operator or "operator")
             return
         if kind == "restock_needed" and card.sim and card.sim.get("id"):
-            try:
+            import contextlib
+            with contextlib.suppress(ValueError):
+                # already resolved elsewhere; the card state stands
                 self._sim.execute(card.sim["id"])
-            except ValueError:
-                pass  # already resolved elsewhere; the card state stands
 
     # --- read helpers -----------------------------------------------------------------
 

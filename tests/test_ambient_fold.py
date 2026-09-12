@@ -17,9 +17,9 @@ def _ev(agent, seq, kind, payload):
 
 
 def test_intent_kinds_exact_set():
-    assert INTENT_KINDS == frozenset({
+    assert frozenset({
         "restock_needed", "deploy_needs_review", "drift_contain", "budget_risk",
-    })
+    }) == INTENT_KINDS
 
 
 def test_pending_approval_yields_review_candidate():

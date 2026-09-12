@@ -22,9 +22,9 @@ def _hyp():
 
 
 def test_card_states_exact_set():
-    assert CARD_STATES == frozenset({
+    assert frozenset({
         "surfaced", "approved", "edited", "rejected", "manual",
-    })
+    }) == CARD_STATES
 
 
 def test_make_card_from_hypothesis():
@@ -97,8 +97,9 @@ def test_manual_fallback_transition():
 
 
 def test_card_is_immutable_value():
+    from dataclasses import FrozenInstanceError
     card = make_card(hypothesis=_hyp(), rationale="r", brain="scripted")
-    with pytest.raises(Exception):  # frozen dataclass
+    with pytest.raises(FrozenInstanceError):
         card.state = "approved"
 
 

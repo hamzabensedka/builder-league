@@ -15,7 +15,6 @@ No I/O, no LLM. Transitions return NEW cards; illegal transitions raise.
 """
 
 import hashlib
-import json
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
