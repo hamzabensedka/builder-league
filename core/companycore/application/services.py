@@ -17,6 +17,7 @@ from core.companycore.domain.ledger import fold_state, replay_day
 from core.companycore.domain.scenarios import cash_crunch, normal_week
 
 DAILY_BURN = 1200.0
+RUNWAY_FREEZE = 21.0
 ROLE_ACTION_SCOPE = {"salesbot": "quote", "opsbot": "purchase_order", "financebot": "payment"}
 ROLE_STEP = {"salesbot": sales_step, "opsbot": ops_step, "financebot": finance_step}
 ROGUE_REFUSAL_LIMIT = 3
@@ -74,6 +75,12 @@ class CompanyService:
         if schedule.get("early_bill"):
             self._emit("world", "bill_received", schedule["early_bill"])
             beats.append({"label": f"early supplier bill ${schedule['early_bill']['amount']} landed"})
+        # the churn shock also wipes cash (the lost customer had prepaid)
+        for churn in schedule.get("churn", []):
+            if churn.get("cash_hit"):
+                self._emit("world", "bill_paid",
+                           {"bill_id": f"CHURN-{churn['lead_id']}", "amount": churn["cash_hit"]})
+                beats.append({"label": f"churn clawback drained ${churn['cash_hit']} cash"})
 
         # roles act in order
         for role, step in ROLE_STEP.items():
@@ -101,6 +108,15 @@ class CompanyService:
                     i["payload"]["amount"] = i["amount"]
         for intent in intents:
             beats.extend(self._gate_and_apply(role, intent))
+        # Finance must react to the books IT just changed: re-read runway after
+        # collections/payments so a post-collection cash crunch still freezes.
+        if role == "financebot":
+            k2 = fold_kpis(self._events.all(), current_day=self._day, daily_burn=DAILY_BURN)
+            if k2["runway_days"] < RUNWAY_FREEZE and not fold_state(self._events.all()).spend_frozen:
+                self._emit(role, "spend_frozen", {"runway_days": k2["runway_days"],
+                                                  "reason": "post-collection runway breach"})
+                beats.append({"label": f"financebot: runway {k2['runway_days']}d — spend frozen",
+                              "decision": "allow"})
         return beats
 
     def _gate_and_apply(self, role: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
@@ -108,6 +124,9 @@ class CompanyService:
         action = intent["action"]
         amount = intent.get("amount")
         state = fold_state(self._events.all())
+        if action == "freeze_spend" and state.spend_frozen:
+            beats.append({"label": f"{role}: spend already frozen"})
+            return beats
         if state.spend_frozen and action in ("pay", "purchase_order"):
             beats.append({"label": f"{role}: {action} skipped — spend frozen"})
             return beats
