@@ -43,11 +43,27 @@ class CompanyService:
     # --- seed ------------------------------------------------------------
     def seed_demo(self, scenario: str = "normal") -> dict[str, Any]:
         from core.companycore.application.demo import seed_company
+
+        # Re-seed must start a FRESH company, not stack a second one on top.
+        self.reset()
         out = seed_company(self._trust, self._emit_opening)
         self._keys = out["keys"]
         self._scenario = cash_crunch(7) if scenario == "cash_crunch" else normal_week(7)
         self._seeded = True
         return out
+
+    def reset(self) -> dict[str, Any]:
+        """Reset the whole company: the event spine, the human inbox, the day
+        counter, and the scenario/rogue flags. Re-seed starts clean."""
+        self._events.reset()
+        self._inbox.reset()
+        self._day = 0
+        self._keys = {}
+        self._scenario = normal_week(7)
+        self._rogue_sales = False
+        self._refusal_streak = 0
+        self._seeded = False
+        return {"status": "reset"}
 
     def _emit_opening(self, actor: str, kind: str, payload: dict) -> None:
         self._events.append(make_event(day=0, seq=self._events.next_seq(),
@@ -228,9 +244,23 @@ class CompanyService:
         return [e.as_dict() for e in self._inbox.pending()]
 
     def run_cash_crunch(self) -> dict[str, Any]:
+        if not self._seeded:
+            raise ValueError("run seed_demo first")
         self._scenario = cash_crunch(7)
-        return {"label": "cash-crunch scenario armed; advance days to run it"}
+        return {
+            "label": "cash-crunch scenario armed; advance days to run it",
+            "beats": [{"label": "⚡ Cash crunch armed — a churn shock + early supplier "
+                                "bill will drain cash over the next days; financebot will "
+                                "freeze spend when runway breaches 21d"}],
+        }
 
     def inject_rogue_sales(self) -> dict[str, Any]:
+        if not self._seeded:
+            raise ValueError("run seed_demo first")
         self._rogue_sales = True
-        return {"label": "SalesBot objective corrupted: over-discounting armed"}
+        return {
+            "label": "SalesBot objective corrupted: over-discounting armed",
+            "beats": [{"label": "☠ Rogue sales armed — SalesBot now quotes 3× over-scope; "
+                                "TrustCore will refuse each quote and auto-pause it after "
+                                f"{ROGUE_REFUSAL_LIMIT} refusals"}],
+        }

@@ -46,3 +46,7 @@ class Inbox:
 
     def all(self) -> list[Escalation]:
         return list(self._items.values())
+
+    def reset(self) -> None:
+        """Clear all escalations for a fresh demo seed."""
+        self._items.clear()

@@ -28,6 +28,12 @@ class InMemoryCardStore:
     def all(self) -> list[DecisionCard]:
         return [self._cards[i] for i in self._order]
 
+    def reset(self) -> None:
+        """Clear all cards for a fresh demo seed."""
+        with self._lock:
+            self._cards.clear()
+            self._order.clear()
+
 
 class ManualClock:
     def __init__(self, start: datetime | None = None) -> None:

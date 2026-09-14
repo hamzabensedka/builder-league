@@ -142,6 +142,14 @@ class InterventionGate:
     def pending_approvals(self) -> list[Approval]:
         return [a for a in self._approvals.values() if a.status == "pending"]
 
+    def reset(self) -> None:
+        """Clear all control state and pending approvals (demo re-seed path).
+
+        Kill is terminal for a RUN, but the demo must be re-runnable: a fresh
+        seed starts every agent back at ACTIVE with an empty approval queue."""
+        self._states.clear()
+        self._approvals.clear()
+
     def get_approval(self, approval_id: str) -> Approval | None:
         return self._approvals.get(approval_id)
 

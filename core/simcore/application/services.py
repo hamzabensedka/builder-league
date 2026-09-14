@@ -187,6 +187,14 @@ class SimService:
     def get(self, sim_id: str) -> dict[str, Any] | None:
         return self._sims.get(sim_id)
 
+    def reset(self) -> dict[str, Any]:
+        """Reset the shared budget ledger and all simulation records, so a
+        visitor can re-run the C8 demo from a clean world (re-seed then acts
+        as a true fresh seed instead of stacking)."""
+        self._ledger_store.reset(BudgetLedger())
+        self._sims.reset()
+        return {"status": "reset"}
+
     def list(self, *, limit: int = 50) -> list[dict[str, Any]]:
         return self._sims.list(limit=limit)
 

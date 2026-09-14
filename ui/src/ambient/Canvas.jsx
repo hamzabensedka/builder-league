@@ -31,6 +31,8 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ operator: 'operator' }),
     }).then((r) => r.json()),
+  reset: () => fetch('/api/ambient/reset', { method: 'POST' }).then((r) => r.json()),
+  towerReset: () => fetch('/api/tower/reset', { method: 'POST' }).then((r) => r.json()),
 }
 
 const money = (n) => (n == null ? '—' : `$${Number(n).toLocaleString()}`)
@@ -92,6 +94,12 @@ export default function Canvas({ onCompare }) {
   const seed = async () => {
     setRunning(true)
     try {
+      if (seeded) {
+        // Re-bind = a fresh canvas: clear handled cards + reset the fleet so
+        // the decision card surfaces again instead of staying one-shot.
+        await api.reset()
+        await api.towerReset()
+      }
       await api.demo()
       setSeeded(true)
       await refresh()

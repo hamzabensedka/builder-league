@@ -14,6 +14,7 @@ const api = {
   execute: (id) => fetch(`/api/sim/${id}/execute`, { method: 'POST' }).then((r) => r.json()),
   reject: (id) => fetch(`/api/sim/${id}/reject`, { method: 'POST' }).then((r) => r.json()),
   rollback: (id) => fetch(`/api/sim/${id}/rollback`, { method: 'POST' }).then((r) => r.json()),
+  reset: () => fetch('/api/sim/reset', { method: 'POST' }).then((r) => r.json()),
   hold: (body) =>
     fetch('/api/sim/hold', {
       method: 'POST',
@@ -94,6 +95,12 @@ export default function SimGate() {
   const seed = async () => {
     setBusy(true)
     try {
+      if (seeded) {
+        // Re-seed = a true fresh world, not a stacked second seed.
+        await api.reset()
+        setSim(null)
+        setLog([])
+      }
       const s = await api.demo()
       setSeeded(s)
       note('Seeded BuyerBot with $1,000 signed purchase authority + history.')
@@ -123,7 +130,11 @@ export default function SimGate() {
     setBusy(true)
     try {
       await api.hold({ agent_key: seeded.vendor_key, amount: 200.0 })
-      note('VendorBot placed a REAL concurrent $200 hold (between simulate and execute). The simulation is now stale.')
+      note(
+        sim && status === 'pending'
+          ? 'VendorBot placed a REAL concurrent $200 hold (between simulate and execute). The simulation is now stale.'
+          : 'VendorBot placed a REAL concurrent $200 hold on the shared budget.'
+      )
       await refreshLedger()
     } finally {
       setBusy(false)
@@ -160,7 +171,8 @@ export default function SimGate() {
             <button onClick={simulate} disabled={busy || !seeded} className="pressable border text-sm font-medium px-4 py-2 rounded-md hover:bg-[var(--canvas)] disabled:opacity-50" style={{ borderColor: 'var(--line)' }}>
               Simulate $900 purchase
             </button>
-            <button onClick={injectHold} disabled={busy || !seeded || !sim || status !== 'pending'} className="pressable border text-sm font-medium px-4 py-2 rounded-md hover:bg-[var(--amber-bg)] disabled:opacity-50" style={{ borderColor: 'var(--line)' }}>
+            <button onClick={injectHold} disabled={busy || !seeded} className="pressable border text-sm font-medium px-4 py-2 rounded-md hover:bg-[var(--amber-bg)] disabled:opacity-50" style={{ borderColor: 'var(--line)' }}
+              title={sim && status === 'pending' ? 'Inject a real hold between simulate and execute — the safety-net scenario' : 'Inject a real concurrent hold on the shared budget'}>
               Inject concurrent $200 hold
             </button>
           </div>

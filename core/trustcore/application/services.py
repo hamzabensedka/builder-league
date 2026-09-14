@@ -157,11 +157,18 @@ class TrustService:
             valid_completion_count=valid_completions,
         )
 
-        # refusal receipts for explicitly suspicious material get sharper reasoning
+        # Refusal reasoning: lead with the POLICY reason (why the action itself
+        # was refused — e.g. no authority claim covers this action/amount). Only
+        # when the policy produced no reason do we surface a suspicious-material
+        # failure. We still append failing-credential detail for the audit trail,
+        # but a stale forged credential on record must never mask the real,
+        # primary reason for THIS refusal.
         reasoning = "; ".join(result.reasons)
         if failures and result.decision == PolicyDecision.REFUSE:
-            bad = failures[0]
-            reasoning = f"credential {bad['credential_id']}: {', '.join(bad['failures'])}"
+            failure_note = "; ".join(
+                f"credential {f['credential_id']}: {', '.join(f['failures'])}" for f in failures
+            )
+            reasoning = f"{reasoning} ({failure_note})" if reasoning else failure_note
 
         receipt = Receipt(
             id=str(uuid.uuid4()),

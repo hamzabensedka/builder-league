@@ -40,7 +40,7 @@ def run_adaptive_demo(trust: TrustService) -> dict[str, Any]:
         {"label": "Pick scenario A (price spike) → run adaptive + baseline side by side"},
         {"label": "Inject the spike mid-run: watch the contradiction fire, the "
                   "'I changed my mind because…' trace, and the revised plan — while the "
-                  "baseline spends $1,400 against a $1,000 budget"},
+                  "blind baseline over-commits past the $1,000 budget (it never sees the event)"},
         {"label": "Scenario C is the failure test: flap the price and watch damping "
                   "contain the oscillation — escalation to a human, receipted"},
     ]
