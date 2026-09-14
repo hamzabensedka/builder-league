@@ -31,6 +31,10 @@ class InMemoryMemoryStore:
             if f.user_id == user_id and f.agent_id == agent_id and f.slot == slot
         ]
 
+    def reset(self) -> None:
+        """Clear all facts for a fresh demo seed."""
+        self._facts.clear()
+
 
 class InMemoryTombstoneLog:
     def __init__(self) -> None:
@@ -44,6 +48,10 @@ class InMemoryTombstoneLog:
 
     def reasons(self) -> dict[str, str]:
         return {t.fact_id: str(t.reason) for t in self._entries}
+
+    def reset(self) -> None:
+        """Clear all tombstones for a fresh demo seed."""
+        self._entries.clear()
 
 
 class SystemClock:

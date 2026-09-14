@@ -123,8 +123,14 @@ export default function Company() {
   }
 
   const lever = async (fn) => {
-    await fn()
-    await refresh()
+    setRunning(true)
+    try {
+      const out = await fn()
+      if (out?.beats) setBeats(out.beats)
+      await refresh()
+    } finally {
+      setRunning(false)
+    }
   }
 
   const doReplay = async (day) => {

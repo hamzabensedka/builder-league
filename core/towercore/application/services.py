@@ -48,9 +48,11 @@ class TowerService:
     def seed_demo(self) -> dict[str, Any]:
         """Register the fleet with real signed credentials (C1) so every agent
         action is checked against enforced authority. Safe to re-click: fresh
-        keypairs each run, world state reset."""
+        keypairs each run, and a FULL reset of gate/stream/cost so a previously
+        killed or paused fleet comes back clean."""
         from core.towercore.application.demo import seed_fleet
 
+        self.reset()
         result = seed_fleet(self._trust)
         self._keys = result["keys"]
         self._world = {"cursors": {}}
@@ -63,6 +65,18 @@ class TowerService:
         return {"fleet": [{"agent_id": a.agent_id, "name": a.name, "job": a.job,
                            "budget_usd": a.budget_usd} for a in FLEET],
                 "beats": result["beats"]}
+
+    def reset(self) -> dict[str, Any]:
+        """Reset the whole control plane: control states (killed/paused), the
+        event stream, and metered costs. Lets a visitor re-run the demo after
+        killing the fleet. Agents must be re-enrolled (seed_demo) afterwards."""
+        self.gate.reset()
+        self.stream.reset()
+        self._cost.reset()
+        self._world = {"cursors": {}}
+        self._rogue = set()
+        self._seeded = False
+        return {"status": "reset"}
 
     # --- the step loop ---------------------------------------------------------
 

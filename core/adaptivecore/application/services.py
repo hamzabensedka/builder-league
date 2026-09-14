@@ -63,8 +63,8 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "injectors": [
             {"kind": "hold_placed", "label": "Concurrent hold $600 (another team)",
              "payload": {"amount": 600.0, "agent": "OtherTeamBot"}},
-            {"kind": "hold_released", "label": "Hold released (−$200)",
-             "payload": {"amount": 200.0}},
+            {"kind": "hold_released", "label": "Hold released (full $600)",
+             "payload": {"amount": 600.0}},
         ],
         # budget squeezes can arrive in rapid succession — no cooldown, the
         # min-delta hysteresis and the revision budget are the containment.

@@ -29,6 +29,7 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ agent_id: id }),
     }).then((r) => r.json()),
+  reset: () => fetch('/api/tower/reset', { method: 'POST' }).then((r) => r.json()),
 }
 
 const STATUS = {
@@ -322,13 +323,22 @@ export default function Tower() {
                 onReplay={onReplay}
               />
             ))}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => act(() => api.rogue('deploybot'))}
                 disabled={busy}
                 className="pressable text-[11px] font-medium px-3 py-1.5 rounded bg-[var(--red-bg)] text-[var(--red-ink)] disabled:opacity-40"
               >
                 Inject rogue objective
+              </button>
+              <button
+                onClick={() => act(api.seed)}
+                disabled={busy}
+                className="pressable text-[11px] font-medium px-3 py-1.5 rounded border hover:bg-[var(--canvas)] disabled:opacity-40"
+                style={{ borderColor: 'var(--line)' }}
+                title="Full reset: re-enroll a fresh fleet (clears killed/paused state)"
+              >
+                ↺ Re-enroll fleet
               </button>
               <a
                 href="/api/tower/audit"

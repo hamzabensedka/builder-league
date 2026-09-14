@@ -17,6 +17,7 @@ const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, user_id: 'demo-user', agent_id: 'maya' }),
     }).then((r) => r.json()),
+  reset: () => fetch('/api/memory/reset', { method: 'POST' }).then((r) => r.json()),
 }
 
 const KIND_LABEL = {
@@ -170,6 +171,7 @@ export default function Memory() {
 
   const seed = () =>
     run('demo', async () => {
+      await api.reset() // re-run clean: clear prior facts + tombstones
       const out = await api.demo()
       setBeats(out.beats.map((b) => b.label))
       setRecalls([])
@@ -180,6 +182,8 @@ export default function Memory() {
     run('unsure', async () => {
       const out = await api.beat('unsure')
       setRecalls([out.seat, out.city])
+      setBeats((b) => [...b, 'Maya plans a trip — seat is confident (95%), but the Lisbon '
+        + 'inference is only 40%: "I might be wrong about this" (see Recall)'])
     })
 
   const correct = () =>

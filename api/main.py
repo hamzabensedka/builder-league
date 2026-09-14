@@ -468,6 +468,11 @@ def create_app(service: TrustService | None = None) -> FastAPI:
             "limit": SIM_LIMIT,
         }
 
+    @app.post("/api/sim/reset")
+    def sim_reset() -> dict[str, Any]:
+        """Reset the shared budget ledger + simulations so the C8 demo re-runs clean."""
+        return sim_svc.reset()
+
     # ------------------------------------------------------------ C2 DecisionCore
     # The decision is computed from signals — no prompt box, no LLM.
 
@@ -698,6 +703,12 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         order — the full forensic trail from enrollment to containment."""
         return {"events": tower_svc.export_audit()}
 
+    @app.post("/api/tower/reset")
+    def tower_reset() -> dict[str, Any]:
+        """Reset the control plane (control states, stream, costs) so the demo
+        can be re-run after a fleet was killed. Re-enroll afterwards via /api/tower/demo."""
+        return tower_svc.reset()
+
     # ---------------------------------------------------------------- C4 MemoryCore
     # The memory that knows it might be wrong: tagged writes, reliance-receipt
     # recalls, explicit + receipted forgetting. Revocation is signature-gated
@@ -735,6 +746,11 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         user_key = KeyPair.generate()
         app.state.memory_demo_keys["demo-user"] = user_key
         return seed_demo(memory_svc, user_key=user_key)
+
+    @app.post("/api/memory/reset")
+    def memory_reset() -> dict[str, Any]:
+        """Reset Maya's memory (facts + tombstones) so the C4 demo re-runs clean."""
+        return memory_svc.reset()
 
     @app.post("/api/memory/demo/unsure")
     def memory_demo_unsure() -> dict[str, Any]:
@@ -879,6 +895,11 @@ def create_app(service: TrustService | None = None) -> FastAPI:
     def company_rogue_sales() -> dict[str, Any]:
         return company_svc.inject_rogue_sales()
 
+    @app.post("/api/company/reset")
+    def company_reset() -> dict[str, Any]:
+        """Reset the company (spine, inbox, day counter) so C6 re-runs clean."""
+        return company_svc.reset()
+
     # ------------------------------------------------------------- C7 AmbientCore
     # The ambient canvas: no text input, no dashboard. The canvas snapshot is
     # ambient state + at most ONE decision card. Card verbs are receipted REST.
@@ -899,6 +920,11 @@ def create_app(service: TrustService | None = None) -> FastAPI:
         """One-click C7 seed: bind the canvas to the live tower fleet (seeding
         the fleet first if needed). The canvas watches; it never asks."""
         return ambient_svc.seed_demo()
+
+    @app.post("/api/ambient/reset")
+    def ambient_reset() -> dict[str, Any]:
+        """Reset the ambient canvas card store so C7 re-runs clean."""
+        return ambient_svc.reset()
 
     @app.get("/api/ambient/canvas")
     def ambient_canvas() -> dict[str, Any]:
