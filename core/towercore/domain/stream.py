@@ -41,6 +41,13 @@ class EventStream:
     def next_seq(self, agent_id: str) -> int:
         return self._next_seq.get(agent_id, 1)
 
+    def reset(self) -> None:
+        """Clear the log for a fresh demo seed. The stream is append-only for a
+        given run; a re-seed deliberately starts a new, empty run. Subscribers
+        are kept (live SSE clients stay attached to the new run)."""
+        self._events.clear()
+        self._next_seq.clear()
+
     # --- read path ------------------------------------------------------------
 
     def all(self) -> list[AgentEvent]:

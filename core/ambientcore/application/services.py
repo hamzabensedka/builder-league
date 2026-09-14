@@ -58,6 +58,13 @@ class AmbientService:
         return {"agents": sorted(self._agent_keys), "beats": [
             {"label": "ambient canvas bound to the live fleet — watching, not chatting"}]}
 
+    def reset(self) -> dict[str, Any]:
+        """Clear the card store so the C7 canvas can be re-run from scratch."""
+        self._cards.reset()
+        self._agent_keys = {}
+        self._seeded = False
+        return {"status": "reset"}
+
     # --- the loop ----------------------------------------------------------------
 
     def canvas(self) -> dict[str, Any]:

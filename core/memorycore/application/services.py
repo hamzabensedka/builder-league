@@ -260,6 +260,12 @@ class MemoryService:
     def list_events(self, *, limit: int = 100) -> dict[str, Any]:
         return {"tombstones": [t.as_dict() for t in self._tombstones.list(limit=limit)]}
 
+    def reset(self) -> dict[str, Any]:
+        """Clear all facts and tombstones so the C4 demo can be re-run clean."""
+        self._store.reset()
+        self._tombstones.reset()
+        return {"status": "reset"}
+
     # ---------------------------------------------------------------- helpers
 
     def _tombstone(self, fact: Fact, reason: ForgetReason, detail: str) -> Tombstone:

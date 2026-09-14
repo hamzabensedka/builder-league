@@ -46,3 +46,9 @@ class InMemorySimulationStore:
 
     def list(self, *, limit: int = 50) -> list[dict]:
         return [self._sims[i] for i in self._order[-limit:]][::-1]
+
+    def reset(self) -> None:
+        """Clear all simulation records for a fresh demo seed."""
+        with self._lock:
+            self._sims.clear()
+            self._order.clear()

@@ -65,3 +65,7 @@ class CostMeter:
 
     def fleet_snapshot(self) -> dict[str, dict[str, Any]]:
         return {agent_id: self.for_agent(agent_id) for agent_id in self._ledger}
+
+    def reset(self) -> None:
+        """Clear all metered totals for a fresh demo run."""
+        self._ledger.clear()

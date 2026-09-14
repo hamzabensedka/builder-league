@@ -27,3 +27,7 @@ class EventLog:
 
     def export(self) -> list[dict]:
         return [e.as_dict() for e in self._events]
+
+    def reset(self) -> None:
+        """Clear the log for a fresh demo seed (append-only per run)."""
+        self._events.clear()

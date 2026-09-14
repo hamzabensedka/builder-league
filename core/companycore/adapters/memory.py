@@ -26,6 +26,10 @@ class InMemoryEventStore:
     def next_seq(self) -> int:
         return self._log.next_seq()
 
+    def reset(self) -> None:
+        """Clear the spine for a fresh demo seed (re-seed starts a new run)."""
+        self._log.reset()
+
 
 class ManualClock:
     def __init__(self, start: datetime | None = None) -> None:
