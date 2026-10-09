@@ -161,11 +161,11 @@ export default function SimGate() {
     <div>
       <HowTo
         steps={[
-          'Press "Run the demo" (top of the page) to fund BuyerBot with $1,000 of signed authority.',
-          'Press "Simulate $900 purchase" — the approval screen is a real before/after diff, not a confirm dialog.',
-          'Press "Approve & execute" to make the write for real; watch the ledger balance change.',
-          'Failure test: simulate again, press "Inject concurrent $200 hold", then approve — the post-check catches 900+200 > 1000 and offers a rollback. Take it.',
-          'Note: the budget is shared across tabs — if a step refuses, press "Reset the ledger" (or "Run the demo" again) for a clean $1,000.',
+          'Click the dark "Seed the demo" button in the left panel — this funds BuyerBot with $1,000 of signed authority.',
+          'Click "Simulate $900 purchase" — the right panel becomes the approval screen: a real before/after diff of the ledger, with the rollback path pre-computed. This is the whole point: no blind "are you sure?" dialog.',
+          'Click "Approve & execute" under the diff — the write happens for real; watch Spent in the "Live budget ledger" panel jump to $900.',
+          'Failure test: click "Simulate $900 purchase" again, then "Inject concurrent $200 hold", then "Approve & execute" — the post-execution check catches 900+200 > 1000, escalates, and a red "Roll back (compensating refund)" button appears. Click it.',
+          'Stuck because the budget is spent? The ledger is shared across tabs — click "Re-seed world" for a clean $1,000.',
         ]}
       />
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 items-start">

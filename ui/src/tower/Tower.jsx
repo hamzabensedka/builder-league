@@ -287,10 +287,11 @@ export default function Tower() {
     <div>
       <HowTo
         steps={[
-          'Press "Run the demo" to enroll three agents with real signed authority — they start streaming events live.',
-          'Step RestockBot through a stock check and a real purchase (simulated before write, gated by authority).',
-          'Step DeployBot — its release has no change ticket, so it parks in the approval queue. Approve or deny it there.',
-          'Failure test: press "Inject rogue objective", deny its demands, watch drift auto-pause it — then Replay its reasoning and Kill (terminal). Export audit for the full trail.',
+          'Click the dark "Enroll the fleet" button — three agents start working with real signed authority, streaming live to this page (the green "live" dot confirms the stream is connected).',
+          'Click "Step" on any agent row a few times — tokens and est. cost tick up. RestockBot does a stock check and a real purchase (simulated before write, gated by authority).',
+          'Step DeployBot — its release has no change ticket, so it parks in the approval queue on the right. Click "✓ Approve" (the human-in-the-loop lever) or "✕ Deny".',
+          'Failure test: click the red "Inject rogue objective" button, deny its demands, and watch drift auto-pause the agent. Click "Replay" on its row to re-fold its reasoning from the append-only log, then "Kill" (terminal — authority revoked on the spot).',
+          'Click "Export audit" to open the raw JSON ledger in a new tab; "↺ Re-enroll fleet" resets everything to a fresh fleet.',
         ]}
       />
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr] gap-4 items-start">

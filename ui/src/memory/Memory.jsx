@@ -220,10 +220,11 @@ export default function Memory() {
     <div className="fade-up">
       <HowTo
         steps={[
-          'Press "Run the demo" — Maya learns three facts with different confidence tags (95% user-stated, 40% inferred, CRM import with an expiry).',
-          'Press "2 · Plan a trip" — the seat recall comes back Confident, but the city recall says "I might be wrong" and names its gaps.',
-          'Press "3 · User corrects" — "moved to Porto" supersedes the weak guess; recall is now Confident.',
-          'Press "4 · Time passes" then "5 · Sign forget my location" — expiry and a real signed revocation erase facts with visible tombstones.',
+          'Click the dark "Run the demo" button — Maya learns three facts with different confidence tags (95% user-stated, 40% inferred, CRM import with an expiry).',
+          'Click the "seat preference" / "city" / "airline" / "favorite color" chips under "Ask Maya" — every answer carries a reliance receipt showing exactly which memory it rested on.',
+          'Click "2 · Plan a trip (the unsure moment)" — the seat recall comes back Confident, but the city recall says "I might be wrong" and names its gaps instead of guessing.',
+          'Click "3 · User corrects: moved to Porto" — the correction supersedes the weak inferred guess; ask "city" again and recall is now Confident with the correction as its receipt.',
+          'Click "4 · Time passes (staleness sweep)" then "5 · Sign \'forget my location\'" — expiry and a real signed revocation erase facts with visible tombstones, not silence. Ask "city" after the sweep to see decay in action.',
         ]}
       />
       <div className="card p-5 mb-4">

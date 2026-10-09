@@ -304,10 +304,10 @@ export default function AdaptiveRun() {
     <div>
       <HowTo
         steps={[
-          'Press "Run the demo" (top of the page), then "Start adaptive + baseline" below to run the same world twice, side by side.',
-          'Press "Advance" a few times, then hit "⚡ Inject price spike" mid-run — watch the adaptive column re-plan with an "I changed my mind because…" trace.',
-          'Compare with the baseline column: it runs blind and collides with the enforced budget invariant.',
-          'Failure test: pick the flapping-price scenario — the agent oscillates, gets caught by A→B→A detection, and escalates to a human.',
+          'Keep the scenario dropdown on "A · Supplier price spike" and click the dark "Start adaptive + baseline" button — the same world starts twice, side by side (the first start also seeds $1,000 of signed authority).',
+          'In the left (Adaptive) column, click "Advance step →" once or twice, then click "⚡ Price spike → $14.00" — the agent re-plans mid-run and shows an "I changed my mind because…" trace naming the broken assumption.',
+          'In the right (Baseline) column, click "Run baseline (blind) →" — it runs with adaptation off and collides with the enforced budget invariant instead of re-planning.',
+          'Failure test: restart with scenario "C · Flapping price (failure test)", advance, then alternate "⚡ Flap up → $8.10" and "⚡ Flap down → $7.40" — A→B→A oscillation is detected, and the run escalates to a human instead of flip-flopping forever.',
         ]}
       />
       <div className="card p-5 mb-4 fade-up">

@@ -152,10 +152,10 @@ export default function Company() {
     <div className="space-y-4">
       <HowTo
         steps={[
-          'Press "Run the demo" to seed Northwind Components — four roles with signed authority and opening books ($50k cash, 200 units).',
-          'Press "Run a day" — the company operates on its own: quotes, invoices, restocks, collections. Watch revenue, cash, and runway move.',
-          'Answer one item in the human inbox when it appears — that is the human-in-the-loop moment.',
-          'Press "⚡ Cash crunch" — the company self-corrects with zero human input. Then try "☠ Rogue sales" (failure test): over-discounting gets refused and the role is paused.',
+          'Click the dark "Seed Northwind Components" button — four roles get signed authority and opening books ($50k cash, 200 units).',
+          'Click "▶ Run a day" — the company operates on its own: quotes, invoices, restocks, collections. Watch the KPI cards (cash, runway, inventory) move.',
+          'When the human inbox lights up, open the item, pick a resolution, and click to resolve — that is the human-in-the-loop moment.',
+          'Click "⚡ Cash crunch" — the company self-corrects with zero human input. Then click "☠ Rogue sales" (failure test): over-discounting gets refused and the role is paused.',
           'Drag the replay scrubber to any earlier day — the whole board re-folds from the event log.',
         ]}
       />

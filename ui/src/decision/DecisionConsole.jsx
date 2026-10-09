@@ -162,10 +162,10 @@ export default function DecisionConsole() {
     <div>
       <HowTo
         steps={[
-          'Press "Run the demo" (top of the page) to seed three agents with real signed authority.',
-          'Pick a preset on the left — e.g. "Clean $120 refund" → EXECUTE, then "$2400 refund, missing invoice_id" → ASK.',
-          'Read the five weighted signal bars: they are the whole reason for the verdict, no hidden prompt.',
-          'Failure test: run the "$8000 deploy, missing change_ticket" preset — full authority, but the engine still refuses to execute and names what is missing.',
+          'Press the dark "Seed the demo (3 agents, signed authority)" button in the left panel — not the header one.',
+          'Stay on the refund tab: click "Clean $120 refund (invoice + reason)" → verdict EXECUTE. Then click "$2400 refund, missing invoice_id" → ASK, with the missing field named below.',
+          'Switch to the deploy tab and click "$8000 deploy, fully evidenced (still irreversible)" → ESCALATE. The five weighted signal bars under each verdict are the entire reason — no hidden prompt.',
+          'Failure test: on the deploy tab click "Failure test: $8000 deploy, missing change_ticket" — full authority, still never executes; it asks/escalates and names the missing ticket.',
         ]}
       />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 items-start">
