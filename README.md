@@ -92,6 +92,9 @@ Run the demo against it:
 
 Requires Python ≥ 3.11 and Node ≥ 20. No external services needed (SQLite-free
 in-memory by default; Langfuse/Redis are opt-in via env flags and not required).
+Optional env vars are documented in [`.env.example`](.env.example) — none are
+required; without `OPENROUTER_API_KEY` the propose-only narrators fall back to
+scripted deterministic policies and the UI labels which brain answered.
 
 ```bash
 # 1. backend deps
@@ -99,7 +102,7 @@ python -m venv .venv
 .venv/Scripts/pip install -e ".[dev]"        # Windows
 # source .venv/bin/activate && pip install -e ".[dev]"   # macOS/Linux
 
-# 2. run the API (serves /api/trust/*)
+# 2. run the API (serves /api/* and the built inspector UI at /)
 PYTHONPATH=. .venv/Scripts/python -m uvicorn api.main:create_app --factory --port 8000
 
 # 3. in another terminal: run the 90-second demo scenario against it
@@ -107,7 +110,12 @@ PYTHONPATH=. .venv/Scripts/python demo/run_demo.py --base http://localhost:8000
 
 # 4. inspector UI (optional, dev server proxies /api to :8000)
 cd ui && npm install && npm run dev          # http://localhost:5173
+# production build (already committed under ui/dist; rebuild after UI edits):
+cd ui && npm run build
 ```
+
+Verify everything end-to-end (boots the real server, drives all 8 demo flows
+over HTTP): `node scripts/smoke-all.mjs` — 48 checks, 8/8 challenges.
 
 ## The 90-second demo (what a judge sees)
 

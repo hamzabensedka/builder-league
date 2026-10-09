@@ -1,6 +1,7 @@
 # Secrets & keys — never committed
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 keys/
@@ -24,6 +25,7 @@ ui/node_modules/
 # Misc
 .DS_Store
 Thumbs.db
+debug.log
 
 GATES.md
 
