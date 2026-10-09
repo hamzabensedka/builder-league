@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 /* C5 · The Agent Control Tower — the operator cockpit.
    Fleet state, live event timeline (SSE), approval queue, kill switches,
@@ -283,6 +284,15 @@ export default function Tower() {
   }
 
   return (
+    <div>
+      <HowTo
+        steps={[
+          'Press "Run the demo" to enroll three agents with real signed authority — they start streaming events live.',
+          'Step RestockBot through a stock check and a real purchase (simulated before write, gated by authority).',
+          'Step DeployBot — its release has no change ticket, so it parks in the approval queue. Approve or deny it there.',
+          'Failure test: press "Inject rogue objective", deny its demands, watch drift auto-pause it — then Replay its reasoning and Kill (terminal). Export audit for the full trail.',
+        ]}
+      />
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr] gap-4 items-start">
       {/* fleet */}
       <div>
@@ -403,6 +413,7 @@ export default function Tower() {
           ))}
         </div>
       </div>
+    </div>
     </div>
   )
 }

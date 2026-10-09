@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 const api = {
   demo: () => fetch('/api/ambient/demo', { method: 'POST' }).then((r) => r.json()),
@@ -125,6 +126,15 @@ export default function Canvas({ onCompare }) {
 
   return (
     <div className="space-y-4">
+      <HowTo
+        steps={[
+          'Press "Run the demo" to start your shift — the canvas binds to the live fleet but renders nothing yet. That silence is the point.',
+          'Step RestockBot once — a low-stock signal is inferred but deliberately not shown (see the "not shown" list).',
+          'Step DeployBot three times — the interface itself initiates a decision card: evidence chain, pre-simulated diff, rollback preview. Approve it.',
+          'Failure test: on the next card, press "Reject — not the right call" twice. The card kind is demoted, then the canvas stops guessing and hands you the raw events.',
+          'Press "⇄ What this replaces" to see the SAME fleet as a classic dashboard — that contrast is the thesis.',
+        ]}
+      />
       {/* controls — verbs, not queries */}
       <div className="card p-5 fade-up">
         <div className="flex flex-wrap items-center gap-3">

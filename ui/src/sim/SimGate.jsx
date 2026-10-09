@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 /* C8 SimGate — the approval screen IS the diff. No confirm dialog. */
 
@@ -157,6 +158,16 @@ export default function SimGate() {
   const pc = sim?.post_check
 
   return (
+    <div>
+      <HowTo
+        steps={[
+          'Press "Run the demo" (top of the page) to fund BuyerBot with $1,000 of signed authority.',
+          'Press "Simulate $900 purchase" — the approval screen is a real before/after diff, not a confirm dialog.',
+          'Press "Approve & execute" to make the write for real; watch the ledger balance change.',
+          'Failure test: simulate again, press "Inject concurrent $200 hold", then approve — the post-check catches 900+200 > 1000 and offers a rollback. Take it.',
+          'Note: the budget is shared across tabs — if a step refuses, press "Reset the ledger" (or "Run the demo" again) for a clean $1,000.',
+        ]}
+      />
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 items-start">
       {/* left: controls + ledger */}
       <div className="space-y-4">
@@ -317,6 +328,7 @@ export default function SimGate() {
           </>
         )}
       </div>
+    </div>
     </div>
   )
 }

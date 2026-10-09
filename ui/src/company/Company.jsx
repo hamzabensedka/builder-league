@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 const api = {
   demo: (scenario) =>
@@ -149,6 +150,15 @@ export default function Company() {
 
   return (
     <div className="space-y-4">
+      <HowTo
+        steps={[
+          'Press "Run the demo" to seed Northwind Components — four roles with signed authority and opening books ($50k cash, 200 units).',
+          'Press "Run a day" — the company operates on its own: quotes, invoices, restocks, collections. Watch revenue, cash, and runway move.',
+          'Answer one item in the human inbox when it appears — that is the human-in-the-loop moment.',
+          'Press "⚡ Cash crunch" — the company self-corrects with zero human input. Then try "☠ Rogue sales" (failure test): over-discounting gets refused and the role is paused.',
+          'Drag the replay scrubber to any earlier day — the whole board re-folds from the event log.',
+        ]}
+      />
       {/* controls */}
       <div className="card p-5 fade-up">
         <div className="flex flex-wrap items-center gap-3">

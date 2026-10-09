@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 /* C2 DecisionConsole — the decision is computed from signals, not a prompt. */
 
@@ -158,7 +159,16 @@ export default function DecisionConsole() {
   const presets = seeded ? PRESETS[domain](seeded) : []
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 items-start">
+    <div>
+      <HowTo
+        steps={[
+          'Press "Run the demo" (top of the page) to seed three agents with real signed authority.',
+          'Pick a preset on the left — e.g. "Clean $120 refund" → EXECUTE, then "$2400 refund, missing invoice_id" → ASK.',
+          'Read the five weighted signal bars: they are the whole reason for the verdict, no hidden prompt.',
+          'Failure test: run the "$8000 deploy, missing change_ticket" preset — full authority, but the engine still refuses to execute and names what is missing.',
+        ]}
+      />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-4 items-start">
       {/* left: domain picker + presets */}
       <div className="space-y-4">
         <div className="card p-5 fade-up">
@@ -337,6 +347,7 @@ export default function DecisionConsole() {
           </>
         )}
       </div>
+    </div>
     </div>
   )
 }

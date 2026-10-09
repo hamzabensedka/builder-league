@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 const api = {
   demo: () => fetch('/api/adaptive/demo', { method: 'POST' }).then((r) => r.json()),
@@ -301,6 +302,14 @@ export default function AdaptiveRun() {
 
   return (
     <div>
+      <HowTo
+        steps={[
+          'Press "Run the demo" (top of the page), then "Start adaptive + baseline" below to run the same world twice, side by side.',
+          'Press "Advance" a few times, then hit "⚡ Inject price spike" mid-run — watch the adaptive column re-plan with an "I changed my mind because…" trace.',
+          'Compare with the baseline column: it runs blind and collides with the enforced budget invariant.',
+          'Failure test: pick the flapping-price scenario — the agent oscillates, gets caught by A→B→A detection, and escalates to a human.',
+        ]}
+      />
       <div className="card p-5 mb-4 fade-up">
         <p className="text-[15px] text-[var(--ink-soft)] leading-relaxed max-w-3xl mb-4">
           RestockBot runs a multi-step procurement plan against{' '}

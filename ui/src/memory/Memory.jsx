@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import HowTo from '../components/HowTo'
 
 /* C4 · Memory That Knows It Might Be Wrong — Maya's memory inspector.
    Three panels: what Maya remembers (with source/confidence/freshness/scope
@@ -217,6 +218,14 @@ export default function Memory() {
 
   return (
     <div className="fade-up">
+      <HowTo
+        steps={[
+          'Press "Run the demo" — Maya learns three facts with different confidence tags (95% user-stated, 40% inferred, CRM import with an expiry).',
+          'Press "2 · Plan a trip" — the seat recall comes back Confident, but the city recall says "I might be wrong" and names its gaps.',
+          'Press "3 · User corrects" — "moved to Porto" supersedes the weak guess; recall is now Confident.',
+          'Press "4 · Time passes" then "5 · Sign forget my location" — expiry and a real signed revocation erase facts with visible tombstones.',
+        ]}
+      />
       <div className="card p-5 mb-4">
         <h2 className="serif text-2xl font-medium mb-2">What does Maya remember — and how sure is she?</h2>
         <p className="text-[14px] text-[var(--ink-soft)] leading-relaxed mb-5 max-w-2xl">

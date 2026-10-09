@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import AdaptiveRun from './adaptive/AdaptiveRun'
 import Canvas from './ambient/Canvas'
 import Company from './company/Company'
+import HowTo from './components/HowTo'
 import DecisionConsole from './decision/DecisionConsole'
 import Memory from './memory/Memory'
 import SimGate from './sim/SimGate'
@@ -13,6 +14,30 @@ const api = {
     fetch(`/api/trust/profile?subject_key=${encodeURIComponent(key)}`).then((r) => r.json()),
   receipts: () => fetch('/api/trust/receipts?limit=30').then((r) => r.json()),
   runDemo: () => fetch('/api/trust/demo', { method: 'POST' }).then((r) => r.json()),
+}
+
+/* Order + labels for the challenge tabs, C1 → C8. Each maps to the seed/demo
+   endpoint that powers its "Run the demo" button. */
+const TABS = [
+  ['trust', 'C1 · Trust'],
+  ['decision', 'C2 · Decision Engine'],
+  ['adaptive', 'C3 · Adaptive Agent'],
+  ['memory', 'C4 · Memory'],
+  ['tower', 'C5 · Control Tower'],
+  ['company', 'C6 · Company'],
+  ['canvas', 'C7 · Canvas'],
+  ['sim', 'C8 · Simulate first'],
+]
+
+const DEMO_ENDPOINT = {
+  trust: '/api/trust/demo',
+  decision: '/api/decision/demo',
+  adaptive: '/api/adaptive/demo',
+  memory: '/api/memory/demo',
+  tower: '/api/tower/demo',
+  company: '/api/company/demo',
+  canvas: '/api/ambient/demo',
+  sim: '/api/sim/demo',
 }
 
 const shortKey = (key) => (key ? `${key.slice(0, 8)}…${key.slice(-4)}` : '')
@@ -217,13 +242,24 @@ export default function App() {
   const runDemo = async () => {
     setRunning(true)
     try {
-      const result = await api.runDemo()
+      const endpoint = DEMO_ENDPOINT[tab] ?? DEMO_ENDPOINT.trust
+      const init =
+        tab === 'company'
+          ? {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ scenario: 'normal' }),
+            }
+          : { method: 'POST' }
+      const result = await fetch(endpoint, init).then((r) => r.json())
       setLastRun(result)
       await refresh()
-      // select BuyerBot so the profile panel fills in immediately
-      const a = await api.agents()
-      const buyer = a.agents.find((x) => x.public_key === result.buyer_key)
-      if (buyer) setSelected(buyer)
+      // C1: select BuyerBot so the profile panel fills in immediately
+      if (tab === 'trust') {
+        const a = await api.agents()
+        const buyer = a.agents.find((x) => x.public_key === result.buyer_key)
+        if (buyer) setSelected(buyer)
+      }
     } finally {
       setRunning(false)
     }
@@ -285,13 +321,13 @@ export default function App() {
               disabled={running}
               className="pressable bg-[#1a1a18] text-white text-sm font-medium px-5 py-2.5 rounded-md hover:bg-[#333330] disabled:opacity-60"
             >
-              {running ? 'Running the six beats…' : 'Run the demo'}
+              {running ? 'Running…' : 'Run the demo'}
             </button>
             <span className="text-[13px] text-[var(--ink-soft)]">
-              90 seconds, server-side. Watch the receipts appear on the right.
+              Seeds and runs the <span className="font-medium text-[var(--ink)]">{TABS.find(([id]) => id === tab)?.[1]}</span> demo, server-side.
             </span>
           </div>
-          {lastRun && tab === 'trust' && (
+          {lastRun?.beats && (
             <ol className="mt-6 space-y-1.5 fade-up">
               {lastRun.beats.map((b, i) => (
                 <li key={i} className="text-[13px] flex items-baseline gap-2.5">
@@ -305,18 +341,9 @@ export default function App() {
             </ol>
           )}
 
-          {/* challenge tabs */}
-          <div className="mt-8 flex gap-2">
-            {[
-              ['trust', 'C1 · Trust'],
-              ['decision', 'C2 · Decision Engine'],
-              ['sim', 'C8 · Simulate first'],
-              ['adaptive', 'C3 · Adaptive Agent'],
-              ['tower', 'C5 · Control Tower'],
-              ['memory', 'C4 · Memory'],
-              ['company', 'C6 · Company'],
-              ['canvas', 'C7 · Canvas'],
-            ].map(([id, label]) => (
+          {/* challenge tabs, ordered C1 → C8 */}
+          <div className="mt-8 flex flex-wrap gap-2">
+            {TABS.map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -332,10 +359,20 @@ export default function App() {
         </header>
 
         {tab === 'trust' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
-            <AgentList agents={agents} selected={selected} onPick={setSelected} />
-            <Profile agent={selected} profile={profile} />
-            <ReceiptFeed receipts={receipts} />
+          <div>
+            <HowTo
+              steps={[
+                'Press "Run the demo" — three agents (BuyerBot, VendorBot, SpooferBot) earn, lose, and abuse trust in six receipted beats.',
+                'Click an agent in the Fleet list to inspect its signed claims — every count traces to an individually verifiable credential.',
+                'Watch the receipts feed: a legitimate purchase is accepted, a forged signature is refused, a scope escape is refused, and a revocation sticks.',
+                'Every receipt reads "llm off" — enforcement is cryptography + policy only, never a model.',
+              ]}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1.4fr_1fr] gap-4 items-start">
+              <AgentList agents={agents} selected={selected} onPick={setSelected} />
+              <Profile agent={selected} profile={profile} />
+              <ReceiptFeed receipts={receipts} />
+            </div>
           </div>
         )}
         {tab === 'decision' && <DecisionConsole />}
@@ -347,7 +384,7 @@ export default function App() {
         {tab === 'canvas' && <Canvas onCompare={() => setTab('tower')} />}
 
         <footer className="mt-14 pt-6 border-t text-[12px] text-[var(--ink-soft)] flex justify-between" style={{ borderColor: 'var(--line)' }}>
-          <span className="mono">TrustCore + DecisionCore + SimCore + AdaptiveCore + TowerCore + MemoryCore · Builders League, C1, C2, C3, C4, C5 &amp; C8</span>
+          <span className="mono">TrustCore + DecisionCore + AdaptiveCore + MemoryCore + TowerCore + CompanyCore + AmbientCore + SimCore · Builders League, C1–C8</span>
           <span>Ed25519 · VC-shaped claims · append-only receipts · decision layer · simulate-first · plan/observe/revise · agent ops control plane · self-doubting memory</span>
         </footer>
       </div>
